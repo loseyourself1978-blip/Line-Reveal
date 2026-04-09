@@ -1,0 +1,8 @@
+{
+	"appId": "com.linereveal.game",
+	"appName": "Line Reveal",
+	"webDir": "dist",
+	"packageClassList": [
+		"SharePlugin"
+	]
+}
