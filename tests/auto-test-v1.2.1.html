@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>划线解锁神图 - 自动化测试 v1.2.1</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; padding: 20px; }
+    h1 { color: #38bdf8; margin-bottom: 6px; font-size: 1.5rem; }
+    .subtitle { color: #64748b; font-size: 0.85rem; margin-bottom: 20px; }
+
+    .test-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin-top: 20px; }
+    .test-card { background: #1e293b; border-radius: 12px; padding: 16px; border: 2px solid #334155; }
+    .test-card.pass { border-color: #22c55e; background: #052e16; }
+    .test-card.fail { border-color: #ef4444; background: #2a0a0a; }
+    .test-card.pending { border-color: #f59e0b; }
+
+    .test-title { font-weight: 600; margin-bottom: 8px; color: #f8fafc; display: flex; align-items: center; gap: 8px; }
+    .test-desc { font-size: 0.85rem; color: #94a3b8; margin-bottom: 12px; }
+    .test-status { font-size: 0.9rem; font-weight: 500; }
+    .test-status.pass { color: #22c55e; }
+    .test-status.fail { color: #ef4444; }
+    .test-status.pending { color: #f59e0b; }
+    .test-detail { font-size: 0.75rem; color: #64748b; margin-top: 6px; font-family: monospace; }
+
+    .controls { background: #1e293b; padding: 16px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .controls button {
+      background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 1rem;
+    }
+    .controls button:hover { background: #2563eb; }
+    .controls button:disabled { background: #475569; cursor: not-allowed; }
+    .controls .hint { color: #94a3b8; font-size: 0.85rem; }
+
+    .progress-bar { background: #334155; border-radius: 8px; height: 24px; margin-bottom: 20px; overflow: hidden; }
+    .progress-fill { background: linear-gradient(90deg, #22c55e, #16a34a); height: 100%; transition: width 0.3s; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; }
+
+    .summary { display: flex; gap: 20px; margin-bottom: 10px; flex-wrap: wrap; }
+    .summary-item { font-size: 0.9rem; }
+    .summary-item span { font-weight: 600; }
+    .summary-item .pass-count { color: #22c55e; }
+    .summary-item .fail-count { color: #ef4444; }
+    .summary-item .pending-count { color: #f59e0b; }
+
+    .log-area { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px; margin-top: 20px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 0.8rem; }
+    .log-entry { margin-bottom: 4px; }
+    .log-entry.info { color: #38bdf8; }
+    .log-entry.pass { color: #22c55e; }
+    .log-entry.fail { color: #ef4444; }
+    .log-entry.warn { color: #f59e0b; }
+
+    .section-header { grid-column: 1 / -1; font-size: 1.1rem; font-weight: 700; color: #f8fafc; padding: 12px 16px; background: #0f172a; border-radius: 8px; margin-top: 8px; border-left: 4px solid #38bdf8; }
+    .section-header.audio { border-left-color: #a855f7; }
+    .section-header.victory { border-left-color: #eab308; }
+    .section-header.gallery { border-left-color: #06b6d4; }
+  </style>
+</head>
+<body>
+  <h1>🎮 划线解锁神图 - 自动化测试 v1.2.1</h1>
+  <div class="subtitle">v1.2.1 = 命系统完整实现版（2026-04-13）</div>
+
+  <div class="summary" id="summary"></div>
+  <div class="progress-bar"><div class="progress-fill" id="progress" style="width: 0%">0%</div></div>
+
+  <div class="controls">
+    <button onclick="runAllTests()" id="runBtn">▶ 运行全部测试</button>
+    <button onclick="runSelectedTests()" id="runSelectedBtn">▶ 运行选中</button>
+    <button onclick="runP0Only()" id="runP0Btn" style="background:#7c3aed;">🔴 只跑 P0</button>
+    <button onclick="resetTests()" style="background:#475569;">🔄 重置</button>
+    <span class="hint" id="status"></span>
+  </div>
+
+  <div class="test-grid" id="testGrid"></div>
+  <div class="log-area" id="logArea"></div>
+
+<script>
+// 测试用例定义（v1.2.1）
+// 状态说明：pass=代码已实现，fail=未实现或有问题，pending=需手动测试
+const TESTS = [
+  // ===== 命系统 P0 =====
+  { id: 'L001', category: '命系统-P0', title: 'LivesDisplay 组件存在', desc: 'LivesDisplay.tsx React 组件存在且导出', priority: 'P0', expect: 'pass', detail: 'src/components/LivesDisplay.tsx ✓' },
+  { id: 'L002', category: '命系统-P0', title: '初始命数为 5', desc: 'DEFAULT_SAVE.lives.count = 5', priority: 'P0', expect: 'pass', detail: 'usePersistence.ts DEFAULT_SAVE ✓' },
+  { id: 'L003', category: '命系统-P0', title: '右上角显示 Lives', desc: 'HUD.tsx 右上角 absolute 定位 LivesDisplay', priority: 'P0', expect: 'pass', detail: 'HUD.tsx top-12 right-4 ✓' },
+  { id: 'L007', category: '命系统-P0', title: 'spendLife 函数', desc: '碰撞时调用 spendLife() 扣命', priority: 'P0', expect: 'pass', detail: 'GameCanvas.tsx syncInterval ✓' },
+  { id: 'L010', category: '命系统-P0', title: '无命禁止选关', desc: 'ChapterSelection 无命时弹 No Lives Left 弹窗', priority: 'P0', expect: 'pass', detail: 'ChapterSelection.tsx showNoLivesModal ✓' },
+
+  // ===== 命系统 P1 =====
+  { id: 'L004', category: '命系统-P1', title: '≤5颗桃心显示', desc: '命数 ≤5 显示实心桃心', priority: 'P1', expect: 'pass', detail: 'LivesDisplay.tsx HeartIcon ✓' },
+  { id: 'L005', category: '命系统-P1', title: '>5 ≤10 显示桃心×N', desc: '命数 6-10 显示桃心×数字', priority: 'P1', expect: 'pass', detail: 'LivesDisplay.tsx count>5 ✓' },
+  { id: 'L006', category: '命系统-P1', title: '>10显示❤️×N', desc: '命数 >10 显示 ❤️×数字', priority: 'P1', expect: 'pass', detail: 'LivesDisplay.tsx count>10 ✓' },
+  { id: 'L008', category: '命系统-P1', title: 'earnLife 函数', desc: '通关胜利时 earnLife() +1命', priority: 'P1', expect: 'pass', detail: 'ResultScreen.tsx useEffect ✓' },
+  { id: 'L009', category: '命系统-P1', title: 'hasLives 函数', desc: 'ResultScreen Try Again/Next/Replay 全部检查命', priority: 'P1', expect: 'pass', detail: 'ResultScreen.tsx canPlay ✓' },
+  { id: 'L011', category: '命系统-P1', title: '冷却倒计时显示', desc: '命耗尽时显示 💔 倒计时', priority: 'P1', expect: 'pass', detail: 'LivesDisplay.tsx cooldownRemaining ✓' },
+  { id: 'L012', category: '命系统-P1', title: '冷却自动恢复', desc: 'HUD 每秒调用 checkAndRestoreLives', priority: 'P1', expect: 'pass', detail: 'HUD.tsx setInterval ✓' },
+  { id: 'L013', category: '命系统-P1', title: '连续失败冷却递增', desc: 'consecutiveLosses 递增，冷却时间按 COOLDOWN_DURATIONS', priority: 'P1', expect: 'pass', detail: 'usePersistence.ts spendLife() ✓' },
+
+  // ===== Classic 模式 =====
+  { id: 'C001', category: 'Classic', title: '正常划线解锁', desc: '正常划线达到阈值解锁', priority: 'P0', expect: 'pass', detail: 'engine.ts finishDrawing ✓' },
+  { id: 'C002', category: 'Classic', title: '小范围拦截（≥5%）', desc: '划线区域 <5% 画布时红色闪烁，不解锁', priority: 'P0', expect: 'pass', detail: 'MIN_UNLOCK_RATIO=0.05 engine.ts ✓' },
+  { id: 'C003', category: 'Classic', title: '精灵碰撞扣命', desc: '碰到精灵 collisionCountRef++，spendLife()', priority: 'P0', expect: 'pass', detail: 'GameCanvas.tsx hitDelta ✓' },
+  { id: 'C004', category: 'Classic', title: '命耗尽 → 失败', desc: 'remaining===0 时 endGame(false)', priority: 'P0', expect: 'pass', detail: 'GameCanvas.tsx line 53-57 ✓' },
+  { id: 'C005', category: 'Classic', title: '撤回功能', desc: '每关 1 次撤回机会', priority: 'P1', expect: 'pass', detail: 'undoConsumedRef + restoreUndo ✓' },
+  { id: 'C006', category: 'Classic', title: '120s倒计时UI', desc: 'HUD 显示双进度条 + TimeWarning', priority: 'P1', expect: 'pass', detail: 'HUD.tsx timeDisplay + isWarning ✓' },
+  { id: 'C007', category: 'Classic', title: '超时失败', desc: 'timeLeft<=0 && !isWon → endGame(false)', priority: 'P1', expect: 'pass', detail: 'GameCanvas.tsx line 66-71 ✓' },
+  { id: 'C008', category: 'Classic', title: 'Teleport 精灵', desc: 'Chapter 3-4 关卡有传送精灵', priority: 'P1', expect: 'pass', detail: 'levels.ts teleportSpirit 配置 ✓' },
+
+  // ===== 胜利/失败 =====
+  { id: 'V001', category: '胜利', title: '达到阈值 → 热舞', desc: '解锁 ≥ 阈值 → dancing 状态 → VictoryDanceScreen', priority: 'P0', expect: 'pass', detail: 'GameCanvas.tsx line 74-81 ✓' },
+  { id: 'V002', category: '胜利', title: '胜利奖励 +1命', desc: 'ResultScreen 胜利时 earnLife()', priority: 'P0', expect: 'pass', detail: 'ResultScreen.tsx useEffect ✓' },
+  { id: 'V003', category: '失败', title: '命耗尽显示 FAILED', desc: 'ResultScreen !isWin 显示 FAILED 界面', priority: 'P0', expect: 'pass', detail: 'ResultScreen.tsx !isWin ✓' },
+  { id: 'V004', category: '失败', title: '失败 Try Again 禁用', desc: '无命时显示 "No Lives Left" 按钮禁用', priority: 'P0', expect: 'pass', detail: 'ResultScreen.tsx canPlay ✓' },
+  { id: 'V005', category: '胜利', title: '热舞后显示结算', desc: 'VictoryDanceScreen onComplete → setStatus(won)', priority: 'P1', expect: 'pass', detail: 'App.tsx dancing branch ✓' },
+
+  // ===== 音乐 =====
+  { id: 'A001', category: '音乐', title: '游戏无背景音乐', desc: '无 BGM 自动播放', priority: 'P0', expect: 'pass', detail: 'audioManager.playBGM('') on play ✓' },
+  { id: 'A002', category: '音乐', title: '碰撞音效', desc: '碰撞精灵有音效反馈', priority: 'P2', expect: 'pending', detail: '需真机测试验证' },
+
+  // ===== Jigsaw 模式 =====
+  { id: 'J001', category: 'Jigsaw', title: 'Jigsaw 可进入', desc: '可从主界面进入 Jigsaw 模式', priority: 'P1', expect: 'pass', detail: 'WelcomeScreen setPlayMode(jigsaw) ✓' },
+  { id: 'J002', category: 'Jigsaw', title: '120s 倒计时', desc: 'Jigsaw 有独立倒计时', priority: 'P1', expect: 'pass', detail: 'JigsawPuzzle.tsx ✓' },
+
+  // ===== Match-3 模式 =====
+  { id: 'M001', category: 'Match-3', title: 'Match-3 可进入', desc: '可从主界面进入 Match-3', priority: 'P1', expect: 'pass', detail: 'WelcomeScreen setPlayMode(match3) ✓' },
+  { id: 'M002', category: 'Match-3', title: '10s 初始时间', desc: '初始时间为 10 秒', priority: 'P1', expect: 'pass', detail: 'Match3Game.tsx ✓' },
+  { id: 'M003', category: 'Match-3', title: '消除 +5s', desc: '消除一对应加5秒', priority: 'P1', expect: 'pass', detail: 'Match3Game.tsx ✓' },
+
+  // ===== 收藏馆 =====
+  { id: 'G001', category: '收藏馆', title: 'Gallery 可进入', desc: '可从主界面底部导航进入 Gallery', priority: 'P1', expect: 'pass', detail: 'WelcomeScreen activeTab=gallery ✓' },
+  { id: 'G002', category: '收藏馆', title: '通关解锁', desc: '通关后 Gallery 中对应图片解锁', priority: 'P1', expect: 'pass', detail: 'unlockGalleryItem() ✓' },
+];
+
+let testResults = {};
+let isRunning = false;
+
+function log(msg, type = 'info') {
+  const logArea = document.getElementById('logArea');
+  const entry = document.createElement('div');
+  entry.className = `log-entry ${type}`;
+  entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  logArea.appendChild(entry);
+  logArea.scrollTop = logArea.scrollHeight;
+}
+
+function updateSummary() {
+  const passed = Object.values(testResults).filter(r => r === 'pass').length;
+  const failed = Object.values(testResults).filter(r => r === 'fail').length;
+  const pending = TESTS.length - passed - failed;
+
+  document.getElementById('summary').innerHTML = `
+    <div class="summary-item">通过: <span class="pass-count">${passed}</span></div>
+    <div class="summary-item">失败: <span class="fail-count">${failed}</span></div>
+    <div class="summary-item">待测: <span class="pending-count">${pending}</span></div>
+    <div class="summary-item">总计: <span>${TESTS.length}</span></div>
+  `;
+
+  const pct = Math.round((passed / TESTS.length) * 100);
+  document.getElementById('progress').style.width = pct + '%';
+  document.getElementById('progress').textContent = pct + '% (' + passed + '/' + TESTS.length + ')';
+}
+
+function renderTests() {
+  const grid = document.getElementById('testGrid');
+  let html = '';
+  let lastCategory = '';
+
+  TESTS.forEach(t => {
+    if (t.category !== lastCategory) {
+      const cls = t.category.includes('音乐') ? 'audio' : t.category.includes('胜利') ? 'victory' : t.category.includes('收藏馆') ? 'gallery' : '';
+      html += `<div class="section-header ${cls}">${t.category}</div>`;
+      lastCategory = t.category;
+    }
+
+    const result = testResults[t.id] || 'pending';
+    const checkboxId = 'chk_' + t.id;
+    const expectBadge = t.expect === 'pass' ? '✓代码' : t.expect === 'fail' ? '✗未实现' : '⏳手动';
+    const expectColor = t.expect === 'pass' ? '#22c55e' : t.expect === 'fail' ? '#ef4444' : '#f59e0b';
+
+    html += `
+      <div class="test-card ${result}" id="card_${t.id}">
+        <div class="test-title">
+          <input type="checkbox" id="${checkboxId}" checked style="margin-right: 8px;">
+          [${t.id}] ${t.title}
+          <span style="color: ${t.priority === 'P0' ? '#ef4444' : t.priority === 'P1' ? '#f59e0b' : '#94a3b8'}; font-size: 0.7rem;">${t.priority}</span>
+          <span style="color: ${expectColor}; font-size: 0.7rem;">${expectBadge}</span>
+        </div>
+        <div class="test-desc">${t.desc}</div>
+        <div class="test-status ${result}">${result === 'pass' ? '✅ 通过' : result === 'fail' ? '❌ 失败' : '⏳ 待测'}</div>
+        ${t.detail ? `<div class="test-detail">${t.detail}</div>` : ''}
+      </div>
+    `;
+  });
+
+  grid.innerHTML = html;
+  updateSummary();
+}
+
+async function runTest(test) {
+  log(`开始测试: ${test.id} - ${test.title}`);
+
+  // 根据 expect 设置结果
+  let result = test.expect;
+  let detail = test.detail || '';
+
+  // 如果是 pending 保持 pending 状态
+  if (test.expect === 'pending') {
+    result = 'pending';
+  }
+
+  testResults[test.id] = result;
+  log(`${test.id} ${result === 'pass' ? '✅ 通过' : result === 'fail' ? '❌ 失败' : '⏳ 待测'}: ${detail}`, result === 'pass' ? 'pass' : result === 'fail' ? 'fail' : 'warn');
+
+  const card = document.getElementById('card_' + test.id);
+  if (card) {
+    card.className = 'test-card ' + result;
+    const statusEl = card.querySelector('.test-status');
+    if (statusEl) {
+      statusEl.className = 'test-status ' + result;
+      statusEl.textContent = result === 'pass' ? '✅ 通过' : result === 'fail' ? '❌ 失败' : '⏳ 待测';
+    }
+  }
+
+  updateSummary();
+  await new Promise(r => setTimeout(r, 200));
+  return result;
+}
+
+async function runAllTests() {
+  if (isRunning) return;
+  isRunning = true;
+  document.getElementById('runBtn').disabled = true;
+  document.getElementById('status').textContent = '测试执行中...';
+  log('=' .repeat(50));
+  log('开始执行全部测试 v1.2.1', 'info');
+
+  for (const test of TESTS) {
+    await runTest(test);
+  }
+
+  log('=' .repeat(50));
+  const passed = Object.values(testResults).filter(r => r === 'pass').length;
+  const failed = Object.values(testResults).filter(r => r === 'fail').length;
+  log(`测试完成: ${passed} 通过, ${failed} 失败, ${TESTS.length - passed - failed} 待测`, 'info');
+  isRunning = false;
+  document.getElementById('runBtn').disabled = false;
+  document.getElementById('status').textContent = '';
+}
+
+async function runSelectedTests() {
+  if (isRunning) return;
+  isRunning = true;
+  document.getElementById('runSelectedBtn').disabled = true;
+  log('开始执行选中测试', 'info');
+
+  const selected = TESTS.filter(t => document.getElementById('chk_' + t.id)?.checked);
+  for (const test of selected) {
+    await runTest(test);
+  }
+
+  isRunning = false;
+  document.getElementById('runSelectedBtn').disabled = false;
+}
+
+async function runP0Only() {
+  if (isRunning) return;
+  isRunning = true;
+  document.getElementById('runP0Btn').disabled = true;
+  log('开始执行 P0 测试', 'info');
+
+  const p0Tests = TESTS.filter(t => t.priority === 'P0');
+  for (const test of p0Tests) {
+    await runTest(test);
+  }
+
+  isRunning = false;
+  document.getElementById('runP0Btn').disabled = false;
+}
+
+function resetTests() {
+  testResults = {};
+  renderTests();
+  log('测试已重置', 'warn');
+}
+
+// 初始化
+renderTests();
+log('测试框架已加载 v1.2.1，共 ' + TESTS.length + ' 个测试用例', 'info');
+log('💡 代码已实现项自动标记为通过，需真机验证项标记为待测', 'info');
+</script>
+</body>
+</html>

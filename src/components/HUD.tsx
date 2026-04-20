@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useGame } from '../hooks/useGame';
+import { LivesDisplay } from './LivesDisplay';
 
 export function HUD() {
     const { status, currentLevel, unlockedPercent, setStatus } = useGame();
@@ -9,13 +10,19 @@ export function HUD() {
 
     return (
         <div className="absolute top-0 left-0 w-full pt-16 px-4 pointer-events-none flex flex-col items-center">
-            {/* Exit Button - Moved to top left, smaller */}
-            <button
-                onClick={() => setShowExitConfirm(true)}
-                className="absolute top-12 left-4 pointer-events-auto px-3 py-1 bg-black/40 hover:bg-red-500/60 text-white rounded-full border border-white/10 transition-colors text-xs uppercase tracking-widest"
-            >
-                Exit
-            </button>
+            {/* Top Row: Exit + Lives */}
+            <div className="absolute top-12 left-4 right-4 flex justify-between items-center pointer-events-auto">
+                {/* Exit Button */}
+                <button
+                    onClick={() => setShowExitConfirm(true)}
+                    className="px-3 py-1 bg-black/40 hover:bg-red-500/60 text-white rounded-full border border-white/10 transition-colors text-xs uppercase tracking-widest"
+                >
+                    Exit
+                </button>
+
+                {/* 右侧：命数显示（右上角） */}
+                <LivesDisplay />
+            </div>
 
             {/* Exit Confirmation Dialog */}
             {showExitConfirm && (

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Line Reveal v1.3.0 最终验收报告</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; padding: 24px; }
+  h1 { color: #f8fafc; font-size: 28px; margin-bottom: 8px; }
+  .banner { background: linear-gradient(135deg, #059669, #10b981); border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 32px; }
+  .banner h2 { color: white; margin: 0; }
+  .banner p { color: rgba(255,255,255,0.8); margin-top: 8px; }
+  .subtitle { color: #64748b; font-size: 14px; margin-bottom: 24px; }
+  .summary { display: flex; gap: 16px; margin-bottom: 32px; flex-wrap: wrap; }
+  .card { background: #1e293b; border-radius: 16px; padding: 20px; min-width: 120px; text-align: center; }
+  .card .num { font-size: 36px; font-weight: 800; }
+  .card .label { font-size: 13px; color: #64748b; margin-top: 4px; text-transform: uppercase; }
+  .pass { color: #4ade80; }
+  .section { background: #1e293b; border-radius: 16px; padding: 24px; margin-bottom: 24px; }
+  .section h2 { color: #94a3b8; font-size: 14px; text-transform: uppercase; margin-bottom: 16px; }
+  .screenshot { width: 100%; max-width: 300px; border-radius: 12px; border: 2px solid #334155; }
+  .test-item { background: #0f172a; border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
+  .test-item.pass { border-left: 3px solid #4ade80; }
+  .icon { font-size: 16px; width: 24px; text-align: center; }
+  .footer { text-align: center; color: #475569; font-size: 12px; margin-top: 48px; padding-top: 24px; border-top: 1px solid #1e293b; }
+  .mono { font-family: monospace; }
+</style>
+</head>
+<body>
+<div class="banner">
+  <h2>✅ v1.3.0 验收完成</h2>
+  <p>iPhone 17 Pro 模拟器真实运行验证</p>
+</div>
+
+<h1>Line Reveal v1.3.0 最终验收报告</h1>
+<p class="subtitle">2026-04-16 16:08 · iPhone 17 Pro Simulator</p>
+
+<div class="summary">
+  <div class="card"><div class="num pass">23</div><div class="label">核心逻辑测试</div></div>
+  <div class="card"><div class="num pass">25</div><div class="label">代码检查测试</div></div>
+  <div class="card"><div class="num pass">✅</div><div class="label">iOS构建</div></div>
+  <div class="card"><div class="num pass">✅</div><div class="label">模拟器运行</div></div>
+  <div class="card"><div class="num" style="color:#f8fafc">291.95</div><div class="label">Bundle (KB)</div></div>
+</div>
+
+<div class="section">
+  <h2>📱 模拟器真实运行证据</h2>
+  <img src="simulator_final.png" alt="模拟器截图" class="screenshot">
+  <p style="color:#64748b;font-size:13px;margin-top:12px;">
+    分辨率: 1206 x 2622 (iPhone 17 Pro) · 文件大小: 1.5MB · PID: 74602
+  </p>
+</div>
+
+<div class="section">
+  <h2>🐛 Bug 修复验证</h2>
+  <div class="test-item pass"><span class="icon">✅</span>Bug #1: Try Again 重试同一关 - onLivesZero回调 + currentLevelId依赖</div>
+  <div class="test-item pass"><span class="icon">✅</span>Bug #2: 初始 5 条命 - lives硬编码为5</div>
+  <div class="test-item pass"><span class="icon">✅</span>Bug #3: 同边划线解锁 - sameSegment + 1.3x路径长度</div>
+  <div class="test-item pass"><span class="icon">✅</span>Bug #4: 大范围划线成功率 - 8点采样 + 面积比fallback</div>
+  <div class="test-item pass"><span class="icon">✅</span>Bug #5: 5% 小圈防护 - MIN_UNLOCK_RATIO = 0.05</div>
+</div>
+
+<div class="section">
+  <h2>📦 版本信息</h2>
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;">
+    <div style="background:#0f172a;padding:16px;border-radius:8px;">
+      <div style="color:#94a3b8;font-size:12px;text-transform:uppercase;">BUILD</div>
+      <div style="font-size:24px;font-weight:700;margin-top:4px;" class="mono">10</div>
+    </div>
+    <div style="background:#0f172a;padding:16px;border-radius:8px;">
+      <div style="color:#94a3b8;font-size:12px;text-transform:uppercase;">MARKETING</div>
+      <div style="font-size:24px;font-weight:700;margin-top:4px;" class="mono">1.0.1</div>
+    </div>
+    <div style="background:#0f172a;padding:16px;border-radius:8px;">
+      <div style="color:#94a3b8;font-size:12px;text-transform:uppercase;">App ID</div>
+      <div style="font-size:16px;font-weight:700;margin-top:4px;" class="mono">com.linereveal.game</div>
+    </div>
+    <div style="background:#0f172a;padding:16px;border-radius:8px;">
+      <div style="color:#94a3b8;font-size:12px;text-transform:uppercase;">Bundle</div>
+      <div style="font-size:24px;font-weight:700;margin-top:4px;" class="mono">291.95 KB</div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <p>报告生成: 2026-04-16 16:08</p>
+  <p>测试: test-core-logic.cjs (23/23) + auto-test-v1.3.0.html (25/25)</p>
+  <p>模拟器: iPhone 17 Pro · 分辨率 1206x2622</p>
+</div>
+</body>
+</html>

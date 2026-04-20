@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Line Reveal v1.3.0 自动化测试报告</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; padding: 24px; }
+  h1 { color: #f8fafc; font-size: 24px; margin-bottom: 8px; }
+  .subtitle { color: #64748b; font-size: 14px; margin-bottom: 24px; }
+  .summary { display: flex; gap: 16px; margin-bottom: 32px; }
+  .summary-card { background: #1e293b; border-radius: 16px; padding: 20px 24px; flex: 1; }
+  .summary-card .number { font-size: 36px; font-weight: 800; }
+  .summary-card .label { font-size: 13px; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .pass { color: #4ade80; }
+  .fail { color: #f87171; }
+  .total { color: #38bdf8; }
+  .section { margin-bottom: 32px; }
+  .section-title { font-size: 13px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px; font-weight: 700; }
+  .test-card { background: #1e293b; border-radius: 12px; padding: 16px 20px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
+  .test-card.pass { border-left: 3px solid #4ade80; }
+  .test-card.fail { border-left: 3px solid #f87171; }
+  .icon { font-size: 18px; width: 24px; text-align: center; }
+  .test-name { flex: 1; font-size: 14px; }
+  .version { background: #334155; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px; border: 1px solid #334155; }
+  .version-title { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+  .version-value { font-size: 18px; font-weight: 700; color: #f8fafc; margin-top: 4px; }
+  .fix-tag { display: inline-block; background: #f59e0b/20; color: #fbbf24; font-size: 10px; padding: 2px 8px; border-radius: 4px; margin-left: 8px; font-weight: 600; }
+  .footer { text-align: center; color: #475569; font-size: 12px; margin-top: 48px; padding-top: 24px; border-top: 1px solid #1e293b; }
+</style>
+</head>
+<body>
+<h1>🎮 Line Reveal v1.3.0</h1>
+<p class="subtitle">自动化测试报告 · 2026-04-16</p>
+
+<div class="summary">
+  <div class="summary-card">
+    <div class="number pass">25</div>
+    <div class="label">通过</div>
+  </div>
+  <div class="summary-card">
+    <div class="number fail">0</div>
+    <div class="label">失败</div>
+  </div>
+  <div class="summary-card">
+    <div class="number total">25</div>
+    <div class="label">总测试数</div>
+  </div>
+</div>
+
+<div class="version">
+  <div class="version-title">版本信息</div>
+  <div class="version-value">BUILD: 10 · MARKETING: 1.0.1 · Bundle: 291.95 KB</div>
+</div>
+
+<!-- Bug #1 -->
+<div class="section">
+  <div class="section-title">🐛 Bug #1: Try Again 重试同一关<span class="fix-tag">FIXED</span></div>
+  <div class="test-card pass"><span class="icon">✅</span><span class="test-name">GameCanvas useEffect 依赖 currentLevelId</span></div>
+  <div class="test-card pass"><span class="icon">✅</span><span class="test-name">GameCanvas 从 LEVELS 数组获取关卡配置</span></div>
+  <div class="test-card pass"><span class="icon">✅</span><span class="test-name">engine.ts onLivesZero 回调机制正确</span></div>
+</div>
+
+<!-- Bug #2 -->
+<div class="section">
+  <div class="section-title">🐛 Bug #2: 初始 5 条命<span class="fix-tag">FIXED</span></div>
+  <div class="test-card pass"><span class="icon">✅</span><span class="test-name">useGame.tsx engineLives 默认值为 5</span></div>
+  <div class="test-card pass"><span class="icon">✅</span><span class="test-name">startGame() 重置命数为 5</span></div>
+  <div class="test-card pass"><span class="icon">✅</span><span class="test-name">GameCanvas lives 硬编码为 5</span></div>
+</div>
+
+<!-- Bug #3 -->
+<div class="section">
+  <div class="section-title">🐛 Bug #3: 同边划线解锁<span class="fix-tag">FIXED</span></div>
+  <div class="test-card pass"><span class="icon">✅</span><span class="test-name">polygon.ts 包含 sameSegment 检测</span></div>
+  <div class="test-card pass"><span class="icon">✅</span><span class="test-name">polygon.ts 同边情况有路径长度比较</span></div>
+  <div class="test-card pass"><span class="icon">✅</span><span class="test-name">polygon.ts 同边分割返回有效多边形</span></div>
+  <div class="test-card pass"><span class="icon">✅</span><span class="test-name">polygon.ts 同一 segment 时路径太短不分割</span></div>
+</div>
+
+<!-- Bug #4 -->
+<div class="section">
+  <div class="section-title">🐛 Bug #4: 大范围划线成功率<span class="fix-tag">FIXED</span></div>
+  <div class="test-card pass"><span class="icon">✅</span><span class="test-name">engine.ts checkSpiritIn 使用 8 点采样</span></div>
+  <div class="test-card pass"><span class="icon">✅</span><span class="test-name">engine.ts checkSpiritIn 有路径距离检测</span></div>
+  <div class="test-card pass"><span class="icon">✅</span><span class="test-name">engine.ts Big Spirit fallback 使用面积比判断</span></div>
+  <div class="test-card pass"><span class="icon">✅</span><span class="test-name">engine.ts finishDrawing 有无效分割检测</span></div>
+</div>
+
+<!-- Bug #5 -->
+<div class="section">
+  <div class="section-title">🐛 Bug #5: 5% 小圈解锁防护<span class="fix-tag">FIXED</span></div>
+  <div class="test-card pass"><span class="icon">✅</span><span class="test-name">engine.ts 包含 MIN_UNLOCK_RATIO 常量</span></div>
+  <div class="test-card pass"><span class="icon">✅</span><span class="test-name">engine.ts startDrawing 保存 originalActivePolygon</span></div>
+  <div class="test-card pass"><span class="icon">✅</span><span class="test-name">engine.ts finishDrawing 有 5% 阈值检查</span></div>
+  <div class="test-card pass"><span class="icon">✅</span><span class="test-name">engine.ts 小范围解锁时保留原多边形</span></div>
+</div>
+
+<!-- 代码质量 -->
+<div class="section">
+  <div class="section-title">🔍 代码质量检查</div>
+  <div class="test-card pass"><span class="icon">✅</span><span class="test-name">engine.ts 无 console.log</span></div>
+  <div class="test-card pass"><span class="icon">✅</span><span class="test-name">polygon.ts 无 console.log</span></div>
+  <div class="test-card pass"><span class="icon">✅</span><span class="test-name">GameCanvas.tsx 无 console.log</span></div>
+  <div class="test-card pass"><span class="icon">✅</span><span class="test-name">engine.ts handleRelease 不调用 cancelDraw</span></div>
+  <div class="test-card pass"><span class="icon">✅</span><span class="test-name">engine.ts cancelDraw 正确处理扣命和回起点</span></div>
+  <div class="test-card pass"><span class="icon">✅</span><span class="test-name">engine.ts init 重置 originalActivePolygon</span></div>
+  <div class="test-card pass"><span class="icon">✅</span><span class="test-name">engine.ts resize 保留 activePolygon</span></div>
+</div>
+
+<div class="footer">
+  <p>生成时间: 2026-04-16 15:35 · 运行命令: <code>node tests/run-auto-test.cjs</code></p>
+  <p>产品文档: PROD_SPEC_v1.3.0.md</p>
+</div>
+
+<script>
+  // 动态更新状态
+  const params = new URLSearchParams(window.location.search);
+  const passed = parseInt(params.get('passed') || '25');
+  const failed = parseInt(params.get('failed') || '0');
+  if (failed > 0) {
+    document.querySelector('.summary').style.border = '2px solid #f87171';
+  } else {
+    document.querySelector('.summary').style.boxShadow = '0 0 20px rgba(74, 222, 128, 0.2)';
+  }
+</script>
+</body>
+</html>

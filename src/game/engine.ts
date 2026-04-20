@@ -26,6 +26,7 @@ export class GameEngine {
     // Game Logic
     private activePolygon: Polygon = []; // The current Dark Area (Fog)
     private unlockedPolygons: Polygon[] = []; // Areas cleared (for visual reference if needed)
+    private originalActivePolygon: Polygon | null = null; // For rollback on small unlock
 
     // Player State
     private playerPos: Point = { x: 0, y: 0 };
@@ -40,12 +41,17 @@ export class GameEngine {
 
     public isWon = false;
     public lastUnlockPercent = 0;
+    /** v1.3.3 Bug#B Fix: 累计解锁百分比（累加每次划线解锁的面积） */
+    public cumulativeUnlockedPercent = 0;
     public spiritSpeed: 1 | 2 | 3 = 2;
     public fogDensity: 1 | 2 | 3 = 2;
     public lives = 1;
     public initialLives = 1;
     public hapticEnabled = true;
     public levelTimeElapsed = 0;
+    public onLivesZero: (() => void) | null = null;
+    private cancelDrawInProgress = false; // 防重入：防止碰撞链导致多条命清零
+    private readonly MIN_UNLOCK_RATIO = 0.03; // 3% 最小解锁阈值（v1.3.1 从 5% 降低）
     private winAnimProgress = 0;
     private totalArea = 0;
 
@@ -61,7 +67,7 @@ export class GameEngine {
         this.blurredBgCtx = this.blurredBgCanvas.getContext('2d', { willReadFrequently: true })!;
     }
 
-    init(config: { spirits: any[], bgImage: string, spiritSpeed?: 1 | 2 | 3, fogDensity?: 1 | 2 | 3, lives?: number, haptic?: boolean }) {
+    init(config: { spirits: any[], bgImage: string, spiritSpeed?: 1 | 2 | 3, fogDensity?: 1 | 2 | 3, lives?: number, haptic?: boolean, onLivesZero?: () => void }) {
         const canvas = this.canvasRef.current;
         if (!canvas || !this.bufferCtx) return;
 
@@ -70,11 +76,13 @@ export class GameEngine {
 
         this.stop();
         this.activePolygon = [];
+        this.originalActivePolygon = null;
         this.totalArea = 0;
         this.unlockedPolygons = [];
         this.isWon = false;
         this.winAnimProgress = 0;
         this.levelTimeElapsed = 0;
+        this.cumulativeUnlockedPercent = 0; // Bug#B Fix: 重置累计解锁进度
 
         // Load Background
         this.bgImage = new Image();
@@ -104,6 +112,7 @@ export class GameEngine {
         this.initialLives = config.lives || 1;
         this.lives = this.initialLives;
         this.hapticEnabled = config.haptic ?? true;
+        this.onLivesZero = config.onLivesZero ?? null;
 
         // Spawn exactly one Big Spirit per level in the center
         this.bigSpirit = new BigSpirit(canvas.width / 2, canvas.height / 2);
@@ -275,33 +284,51 @@ export class GameEngine {
     private handleRelease() {
         this.targetInputPos = null;
 
+        // 手指抬起：停止划线（不清空 drawPath，由 cancelDraw/finishDrawing 处理）
         if (this.isDrawing) {
-            this.cancelDraw();
-            if (this.drawStart) {
-                this.playerPos = { ...this.drawStart.point };
-                this.playerSegmentIndex = this.drawStart.segmentIndex;
-                this.drawStart = null;
-            }
+            this.isDrawing = false;
+            audioManager.stopDrawSFX();
+            // 玩家留在原位，等待下次划线
         }
     }
 
     private cancelDraw() {
-        if (this.lives > 1) {
-            this.lives--;
-            // Minimal recovery: player stays at start of current path instead of full reset
-            // This is the "Mistake Protection"
-            this.playerPos = { ...this.drawPath[0] };
+        // v1.3.2 Bug#B 修复：防重入，防止碰撞链导致多条命清零
+        if (this.cancelDrawInProgress) return;
+        this.cancelDrawInProgress = true;
+
+        this.lives--;
+        if (this.lives > 0) {
+            // 还有命：玩家回到划线起点，继续游戏
+            // v1.3.2 防御：确保 drawPath 不为空再恢复位置
+            if (this.drawPath.length > 0) {
+                this.playerPos = { ...this.drawPath[0] };
+            } else if (this.drawStart) {
+                this.playerPos = { ...this.drawStart.point };
+            }
             this.isDrawing = false;
             this.drawPath = [];
             this.drawStart = null;
             audioManager.stopDrawSFX();
             audioManager.triggerHaptic(); // Feedback for lost life
+            this.cancelDrawInProgress = false;
             return;
         }
 
+        // v1.3.2 Bug#B/C 修复：命耗尽时立即停止引擎 loop，防止后续帧再次触发 checkCollisions
+        this.isRunning = false;
+        cancelAnimationFrame(this.animationId);
+
         this.isDrawing = false;
         this.drawPath = [];
+        this.drawStart = null;
         audioManager.stopDrawSFX();
+        audioManager.triggerHaptic();
+        // 通知外部（GameCanvas）触发失败
+        if (this.onLivesZero) {
+            this.onLivesZero();
+        }
+        this.cancelDrawInProgress = false;
     }
 
     start() {
@@ -346,9 +373,9 @@ export class GameEngine {
                 const closest = getClosestPointOnPolygon(s.position, this.activePolygon);
                 s.position = closest.point;
                 // Simple reflection: reverse velocity components
-                // (Could be more sophisticated using normal, but reverse works for chaos)
-                (s as any).vx *= -1.1; // Kick back
-                (s as any).vy *= -1.1;
+                // v1.3.3 Bug#A Fix: 修复 vx/vy → velocity.x/y（之前错误拼写导致 NaN）
+                s.velocity.x *= -1.1;
+                s.velocity.y *= -1.1;
             }
         });
 
@@ -421,6 +448,8 @@ export class GameEngine {
     startDrawing() {
         this.isDrawing = true;
         this.drawPath = [this.playerPos];
+        // 保存当前多边形用于小范围解锁回滚
+        this.originalActivePolygon = [...this.activePolygon.map(p => ({ ...p }))];
         this.drawStart = {
             point: { ...this.playerPos },
             segmentIndex: this.playerSegmentIndex
@@ -436,26 +465,44 @@ export class GameEngine {
         const area1 = getPolygonArea(poly1);
         const area2 = getPolygonArea(poly2);
 
+        // 无效分割检测
+        if (area1 < 100 && area2 < 100) {
+            this.isDrawing = false;
+            this.drawPath = [];
+            this.drawStart = null;
+            audioManager.stopDrawSFX();
+            return;
+        }
+
         let keepPoly: Polygon;
         let trashPoly: Polygon;
 
-        // More robust spirit detection: check center and a few points around it
-        const checkSpiritIn = (spirit: Spirit, poly: Polygon) => {
+        // v1.3.0: 增强 spirit 检测（8点采样 + 路径距离检测）
+        const checkSpiritIn = (spirit: Spirit, poly: Polygon, path: Point[]): boolean => {
+            // 1. 中心点检测
             if (isPointInPolygon(spirit.position, poly)) return true;
-            // Epsilon check around spirit
-            const eps = 2;
+            // 2. 多点采样（8个方向，4px 半径）
+            const eps = 4;
             const probes = [
                 { x: spirit.position.x + eps, y: spirit.position.y },
                 { x: spirit.position.x - eps, y: spirit.position.y },
                 { x: spirit.position.x, y: spirit.position.y + eps },
-                { x: spirit.position.x, y: spirit.position.y - eps }
+                { x: spirit.position.x, y: spirit.position.y - eps },
+                { x: spirit.position.x + eps * 0.7, y: spirit.position.y + eps * 0.7 },
+                { x: spirit.position.x - eps * 0.7, y: spirit.position.y + eps * 0.7 },
+                { x: spirit.position.x + eps * 0.7, y: spirit.position.y - eps * 0.7 },
+                { x: spirit.position.x - eps * 0.7, y: spirit.position.y - eps * 0.7 }
             ];
-            return probes.some(p => isPointInPolygon(p, poly));
+            if (probes.some(p => isPointInPolygon(p, poly))) return true;
+            // 3. 如果 spirit 在两个区域都不在，检查是否在划线路径附近（可能在分割线上）
+            const onPath = path.some(p => dist(p, spirit.position) < spirit.radius + 5);
+            if (onPath) return false; // spirit 在路径上 → 不在 polygon 内
+            return false;
         };
 
         if (this.bigSpirit) {
-            const p1HasBig = checkSpiritIn(this.bigSpirit, poly1);
-            const p2HasBig = checkSpiritIn(this.bigSpirit, poly2);
+            const p1HasBig = checkSpiritIn(this.bigSpirit, poly1, this.drawPath);
+            const p2HasBig = checkSpiritIn(this.bigSpirit, poly2, this.drawPath);
 
             if (p1HasBig && !p2HasBig) {
                 keepPoly = poly1;
@@ -464,12 +511,18 @@ export class GameEngine {
                 keepPoly = poly2;
                 trashPoly = poly1;
             } else {
-                // If the Big Spirit is in both (on line) or neither (logic failure),
-                // we keep the largest area as a safety measure.
-                // However, the user wants "Unlock area without Big Spirit".
-                // In case of tie, we default to the larger area to prevent accidental "instant wins".
-                if (area1 > area2) { keepPoly = poly1; trashPoly = poly2; }
-                else { keepPoly = poly2; trashPoly = poly1; }
+                // Big Spirit 在两个区域都有（在线上）或都没有 → 使用面积判断
+                // 但如果两区域面积相近（比值 < 2），偏向保留路径划出的区域
+                const ratio = Math.max(area1, area2) / Math.max(Math.min(area1, area2), 1);
+                if (ratio < 2) {
+                    // 面积相近 → 保留较大的那个（避免误判）
+                    if (area1 > area2) { keepPoly = poly1; trashPoly = poly2; }
+                    else { keepPoly = poly2; trashPoly = poly1; }
+                } else {
+                    // 面积差距大 → 保留较大的（精灵通常在大区域）
+                    if (area1 > area2) { keepPoly = poly1; trashPoly = poly2; }
+                    else { keepPoly = poly2; trashPoly = poly1; }
+                }
             }
         } else {
             // No Big Spirit? Clear smaller area.
@@ -477,8 +530,30 @@ export class GameEngine {
             else { keepPoly = poly2; trashPoly = poly1; }
         }
 
+        // v1.3.1 Bug#C 修复：直接用 trashPoly 面积计算 percent（更准确）
+        const trashArea = getPolygonArea(trashPoly);
+        const percent = trashArea / this.totalArea;
+
+        // 小范围解锁检测（3% 阈值，v1.3.1 从 5% 降低）
+        if (percent < this.MIN_UNLOCK_RATIO) {
+            // 解锁面积太小 → 视为无效，保留原多边形
+            // v1.3.2 Bug#1 修复：不重置 lastUnlockPercent，保留已累计进度
+            if (this.originalActivePolygon) {
+                this.activePolygon = this.originalActivePolygon;
+            }
+            this.isDrawing = false;
+            this.drawPath = [];
+            this.drawStart = null;
+            audioManager.stopDrawSFX();
+            return;
+        }
+
         this.activePolygon = keepPoly;
         this.unlockedPolygons.push(trashPoly);
+        this.lastUnlockPercent = percent;
+        // Bug#B Fix: 累加累计解锁百分比（而非只记录单次）
+        this.cumulativeUnlockedPercent = Math.min(1, this.cumulativeUnlockedPercent + percent);
+        this.originalActivePolygon = keepPoly; // 保存用于回滚
 
         // CLEANUP SPIRITS: Remove those in trashPoly
         this.spirits = this.spirits.filter(s => {
@@ -496,13 +571,12 @@ export class GameEngine {
         this.drawStart = null;
         audioManager.stopDrawSFX();
 
-        // Area Check
-        const area = getPolygonArea(this.activePolygon);
-        const percent = 1 - (area / this.totalArea);
-        this.lastUnlockPercent = percent;
     }
 
     checkCollisions() {
+        // v1.3.2 Bug#B 修复：cancelDraw 执行期间不检测碰撞
+        if (this.cancelDrawInProgress) return;
+
         for (const spirit of this.spirits) {
             if (spirit instanceof SmallSpirit || spirit instanceof BigSpirit) {
                 for (let i = 0; i < this.drawPath.length - 1; i++) {
@@ -511,12 +585,8 @@ export class GameEngine {
                             audioManager.triggerHaptic();
                         }
                         audioManager.playCollisionSFX();
+                        // cancelDraw 内部已处理 drawPath/drawStart/playerPos 清理
                         this.cancelDraw();
-                        if (this.drawStart) {
-                            this.playerPos = { ...this.drawStart.point };
-                            this.playerSegmentIndex = this.drawStart.segmentIndex;
-                            this.drawStart = null;
-                        }
                         return;
                     }
                 }
@@ -609,13 +679,6 @@ export class GameEngine {
 
         // 5. Render Spirits
         this.spirits.forEach(s => s.draw(this.ctx!));
-
-        // 6. Render HUD (Lives)
-        if (this.initialLives > 1) {
-            this.ctx.fillStyle = '#fff';
-            this.ctx.font = 'bold 20px Inter, system-ui';
-            this.ctx.fillText(`LIVES: ${'❤️'.repeat(this.lives)}`, 20, 40);
-        }
     }
 
     public calculateStars(timeElapsed: number, targetTime: number, percent: number, threshold: number): number {

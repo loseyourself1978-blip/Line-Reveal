@@ -2,6 +2,13 @@ import { useGame } from '../hooks/useGame';
 import { audioManager } from '../game/AudioManager';
 import { LEVELS } from '../data/levels';
 
+/**
+ * ResultScreen（v1.3.1）
+ *
+ * Bug#B 修复：
+ * - 文案从 "FAILED" 改为 "YOU LOSE"（用户熟悉度更高）
+ * - 增加视觉对比度，确保 z-50 层级正确
+ */
 export function ResultScreen() {
     const { status, startGame, currentLevelId, saveData, unlockedPercent, setStatus, setActiveTab } = useGame();
 
@@ -12,9 +19,10 @@ export function ResultScreen() {
 
     if (!isWin) {
         return (
-            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center p-6 text-white text-center z-50 animate-in fade-in">
-                <div className="bg-slate-900 border-2 border-red-500/50 p-10 rounded-[40px] shadow-2l shadow-red-500/10">
-                    <h1 className="text-5xl font-black mb-4 uppercase tracking-tighter text-red-500">FAILED</h1>
+            <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-white text-center z-[100] animate-in fade-in">
+                <div className="bg-slate-900 border-2 border-red-500/60 p-10 rounded-[40px] shadow-2xl shadow-red-500/20">
+                    {/* v1.3.1 Bug#B: 改为 "YOU LOSE" */}
+                    <h1 className="text-5xl font-black mb-4 uppercase tracking-tighter text-red-500">YOU LOSE</h1>
                     <p className="text-slate-400 mb-8 font-bold">The spirits blocked the reveal.</p>
                     <button
                         onClick={() => {

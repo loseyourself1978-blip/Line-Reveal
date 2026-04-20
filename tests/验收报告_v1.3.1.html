@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>v1.3.1 验收报告 - Line Reveal</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; padding: 24px; }
+        h1 { font-size: 32px; font-weight: 800; margin-bottom: 8px; color: #f8fafc; }
+        h2 { font-size: 20px; font-weight: 700; margin: 24px 0 12px; color: #f1f5f9; border-bottom: 1px solid #334155; padding-bottom: 8px; }
+        .meta { font-size: 14px; color: #64748b; margin-bottom: 24px; }
+        .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 32px; }
+        .stat { background: #1e293b; border-radius: 12px; padding: 20px; text-align: center; }
+        .stat .value { font-size: 36px; font-weight: 800; }
+        .stat .label { font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+        .pass .value { color: #4ade80; }
+        .code-review .value { color: #60a5fa; }
+        .build .value { color: #fbbf24; }
+        .bugs { display: flex; flex-direction: column; gap: 12px; }
+        .bug { background: #1e293b; border-radius: 12px; padding: 16px; border-left: 4px solid; }
+        .bug.P0 { border-left-color: #f87171; }
+        .bug.P1 { border-left-color: #fbbf24; }
+        .bug-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .bug-id { font-size: 12px; color: #64748b; font-weight: 600; }
+        .bug-name { font-size: 16px; font-weight: 700; color: #f1f5f9; }
+        .bug-badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 700; }
+        .bug.P0 .bug-badge { background: #f87171; color: #450a0a; }
+        .bug.P1 .bug-badge { background: #fbbf24; color: #451a03; }
+        .bug-detail { font-size: 13px; color: #94a3b8; line-height: 1.7; }
+        .bug-detail strong { color: #e2e8f0; }
+        .tests { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+        .test { background: #1e293b; border-radius: 12px; padding: 16px; }
+        .test.pass { border-left: 3px solid #4ade80; }
+        .test-name { font-size: 13px; font-weight: 700; color: #f1f5f9; margin-bottom: 4px; }
+        .test-status { font-size: 11px; font-weight: 700; }
+        .test.pass .test-status { color: #4ade80; }
+        .build-log { background: #020617; border-radius: 12px; padding: 16px; font-family: 'Courier New', monospace; font-size: 12px; }
+        .build-log .line { color: #64748b; padding: 2px 0; }
+        .build-log .success { color: #4ade80; }
+        .build-log .warning { color: #fbbf24; }
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #334155; text-align: center; color: #64748b; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <h1>✅ v1.3.1 验收报告</h1>
+    <div class="meta">
+        版本: BUILD 11 | 日期: 2026-04-16 | 状态: <span style="color:#4ade80">全部通过</span>
+    </div>
+
+    <div class="summary">
+        <div class="stat pass"><div class="value">14/14</div><div class="label">代码检查</div></div>
+        <div class="stat code-review"><div class="value">5</div><div class="label">Bug 修复</div></div>
+        <div class="stat build"><div class="value">✅</div><div class="label">Xcodebuild</div></div>
+        <div class="stat pass"><div class="value">✅</div><div class="label">模拟器验证</div></div>
+    </div>
+
+    <h2>🐛 Bug 修复详情</h2>
+    <div class="bugs">
+        <div class="bug P0">
+            <div class="bug-header">
+                <div>
+                    <div class="bug-id">Bug #A | P0 关键</div>
+                    <div class="bug-name">命数消耗不规律</div>
+                </div>
+                <span class="bug-badge">已修复</span>
+            </div>
+            <div class="bug-detail">
+                <strong>症状：</strong>碰撞后命数有时不减1，或者多条命一次性清零（5→0）<br>
+                <strong>根因：</strong>碰撞链导致 cancelDraw 连续重入<br>
+                <strong>修复：</strong>添加 cancelDrawInProgress 防重入标志，checkCollisions 中检查该标志<br>
+                <strong>文件：</strong>engine.ts
+            </div>
+        </div>
+
+        <div class="bug P0">
+            <div class="bug-header">
+                <div>
+                    <div class="bug-id">Bug #B | P0 关键</div>
+                    <div class="bug-name">失败界面文案</div>
+                </div>
+                <span class="bug-badge">已修复</span>
+            </div>
+            <div class="bug-detail">
+                <strong>症状：</strong>用户没看到 "You Lose" 界面<br>
+                <strong>根因：</strong>ResultScreen 文案是 "FAILED"，且 z-index 层级不足<br>
+                <strong>修复：</strong>改为 "YOU LOSE"，设置 z-[100] 层级<br>
+                <strong>文件：</strong>ResultScreen.tsx
+            </div>
+        </div>
+
+        <div class="bug P1">
+            <div class="bug-header">
+                <div>
+                    <div class="bug-id">Bug #C | P1</div>
+                    <div class="bug-name">小范围划线解锁</div>
+                </div>
+                <span class="bug-badge">已修复</span>
+            </div>
+            <div class="bug-detail">
+                <strong>症状：</strong>用户反馈"还是不能划线解锁小范围"<br>
+                <strong>根因：</strong>MIN_UNLOCK_RATIO=0.05（5%）太高，percent 计算方式不准确<br>
+                <strong>修复：</strong>MIN_UNLOCK_RATIO=0.03（3%），percent 改用 trashArea 直接计算<br>
+                <strong>文件：</strong>engine.ts
+            </div>
+        </div>
+
+        <div class="bug P1">
+            <div class="bug-header">
+                <div>
+                    <div class="bug-id">Bug #D | P1</div>
+                    <div class="bug-name">LivesDisplay 不显示</div>
+                </div>
+                <span class="bug-badge">已修复</span>
+            </div>
+            <div class="bug-detail">
+                <strong>症状：</strong>模拟器测试中右上角没有显示命心<br>
+                <strong>根因：</strong>GameCanvas/LivesDisplay 层叠顺序问题<br>
+                <strong>修复：</strong>GameCanvas absolute+z-0，LivesDisplay z-50+absolute<br>
+                <strong>文件：</strong>GameCanvas.tsx，LivesDisplay.tsx
+            </div>
+        </div>
+
+        <div class="bug P1">
+            <div class="bug-header">
+                <div>
+                    <div class="bug-id">Bug #E | P1</div>
+                    <div class="bug-name">Capacitor 构建流程</div>
+                </div>
+                <span class="bug-badge">已修复</span>
+            </div>
+            <div class="bug-detail">
+                <strong>症状：</strong>cap sync 不会正确复制 JS bundle<br>
+                <strong>修复：</strong>使用 cap copy ios，并手动验证文件存在<br>
+                <strong>构建流程：</strong>npm run build → npx cap copy ios → xcodebuild
+            </div>
+        </div>
+    </div>
+
+    <h2>🧪 代码检查测试 (14/14)</h2>
+    <div class="tests">
+        <div class="test pass"><div class="test-name">A1: cancelDrawInProgress 标志存在</div><div class="test-status">✅ PASS</div></div>
+        <div class="test pass"><div class="test-name">A2: cancelDraw 开头防重入检查</div><div class="test-status">✅ PASS</div></div>
+        <div class="test pass"><div class="test-name">A3: checkCollisions 防重入检查</div><div class="test-status">✅ PASS</div></div>
+        <div class="test pass"><div class="test-name">A4: cancelDrawInProgress 重置 2 处</div><div class="test-status">✅ PASS</div></div>
+        <div class="test pass"><div class="test-name">B1: YOU LOSE 文案存在</div><div class="test-status">✅ PASS</div></div>
+        <div class="test pass"><div class="test-name">B2: z-index 层级正确</div><div class="test-status">✅ PASS</div></div>
+        <div class="test pass"><div class="test-name">C1: MIN_UNLOCK_RATIO = 0.03</div><div class="test-status">✅ PASS</div></div>
+        <div class="test pass"><div class="test-name">C2: percent 使用 trashArea 计算</div><div class="test-status">✅ PASS</div></div>
+        <div class="test pass"><div class="test-name">L1: 防重入机制验证</div><div class="test-status">✅ PASS</div></div>
+        <div class="test pass"><div class="test-name">L2: 3% 阈值 - 2.9% 应拒绝</div><div class="test-status">✅ PASS</div></div>
+        <div class="test pass"><div class="test-name">L3: 3% 阈值 - 5% 应成功</div><div class="test-status">✅ PASS</div></div>
+        <div class="test pass"><div class="test-name">R1: ResultScreen v1.3.1 注释</div><div class="test-status">✅ PASS</div></div>
+        <div class="test pass"><div class="test-name">R2: engine.ts Bug#A 注释</div><div class="test-status">✅ PASS</div></div>
+        <div class="test pass"><div class="test-name">R3: engine.ts Bug#C 注释</div><div class="test-status">✅ PASS</div></div>
+    </div>
+
+    <h2>🔨 Xcodebuild 构建</h2>
+    <div class="build-log">
+        <div class="line success">✅ BUILD SUCCEEDED</div>
+        <div class="line">cd ios/App && xcodebuild -project App.xcodeproj -scheme "Line Reveal"</div>
+        <div class="line">-configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build</div>
+        <div class="line warning">JS Bundle: index-DzocEACa.js (292.20 KB)</div>
+    </div>
+
+    <h2>📱 模拟器验证</h2>
+    <div class="tests">
+        <div class="test pass"><div class="test-name">App 启动</div><div class="test-status">✅ 通过</div></div>
+        <div class="test pass"><div class="test-name">Welcome 界面</div><div class="test-status">✅ 通过</div></div>
+        <div class="test pass"><div class="test-name">PLAY 按钮点击</div><div class="test-status">✅ 通过</div></div>
+        <div class="test pass"><div class="test-name">Chapter/Level 选择</div><div class="test-status">✅ 通过</div></div>
+        <div class="test pass"><div class="test-name">游戏界面</div><div class="test-status">✅ 通过</div></div>
+        <div class="test pass"><div class="test-name">初始命数显示 (5颗桃心)</div><div class="test-status">✅ 通过</div></div>
+        <div class="test pass"><div class="test-name">划线操作</div><div class="test-status">✅ 通过</div></div>
+        <div class="test pass"><div class="test-name">LivesDisplay 渲染</div><div class="test-status">✅ 通过</div></div>
+    </div>
+
+    <div class="footer">
+        Line Reveal v1.3.1 | BUILD 11 | 2026-04-16<br>
+        产品文档: PROD_SPEC_v1.3.1.md<br>
+        测试脚本: tests/run-auto-test-v1.3.1.cjs, tests/sim_test_v1.3.1.py
+    </div>
+</body>
+</html>

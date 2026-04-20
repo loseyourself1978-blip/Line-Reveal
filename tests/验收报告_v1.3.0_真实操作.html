@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>v1.3.0 真实操作验收报告</title>
+<style>
+body { font-family: -apple-system, sans-serif; padding: 20px; background: #0d1117; color: #c9d1d9; }
+h1 { color: #58a6ff; }
+h2 { color: #8b949e; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
+.step { padding: 15px; margin: 10px 0; background: #161b22; border-radius: 8px; border-left: 4px solid #238636; }
+.pass { color: #3fb950; font-weight: bold; }
+.fail { color: #f85149; font-weight: bold; }
+.gallery { display: flex; flex-wrap: wrap; gap: 20px; }
+.screenshot { max-width: 300px; border: 2px solid #30363d; border-radius: 8px; }
+.gallery div { text-align: center; }
+.gallery small { color: #8b949e; }
+.summary { background: #238636; padding: 15px; border-radius: 8px; margin: 20px 0; }
+</style>
+</head>
+<body>
+<h1>🎮 v1.3.0 真实操作验收报告</h1>
+<p>测试时间: 2026-04-16 16:52-16:56</p>
+<p>测试方法: Python + Quartz 模拟鼠标事件 + xcrun simctl screenshot</p>
+
+<h2>📋 测试步骤执行记录</h2>
+
+<div class="step">
+<h3>步骤1: 检查模拟器状态</h3>
+<pre>
+命令: xcrun simctl list devices booted
+结果: iPhone 17 Pro (FF5368A5-E3F3-4200-B4C7-4ACD851CDCD7) (Booted)
+状态: <span class="pass">✅ 通过</span>
+</pre>
+</div>
+
+<div class="step">
+<h3>步骤2: 启动应用</h3>
+<pre>
+命令: xcrun simctl launch booted "com.linereveal.game"
+结果: com.linereveal.game: 75809
+状态: <span class="pass">✅ 通过</span>
+</pre>
+</div>
+
+<div class="step">
+<h3>步骤3: 截图欢迎界面</h3>
+<pre>
+文件: /tmp/real_01_welcome.png
+大小: 915156 bytes
+MD5: 6a87b325b718b3b99b1e98eacb7f4bbe
+状态: <span class="pass">✅ 欢迎界面正常显示</span>
+</pre>
+</div>
+
+<div class="step">
+<h3>步骤4: 点击PLAY按钮</h3>
+<pre>
+坐标计算: iOS (603, 1850) → 屏幕 (999.5, 649.8)
+命令: Quartz.CGEvent 鼠标按下/释放
+结果: <span class="pass">✅ 界面变化</span>
+MD5变化: 6a87b325b718b3b99b1e98eacb7f4bbe → 1ef95b0cbcd4b158fdcfd3a967a27e3f
+</pre>
+</div>
+
+<div class="step">
+<h3>步骤5: 截图游戏界面</h3>
+<pre>
+文件: /tmp/real_03_clicked.png
+大小: 915169 bytes
+分析: 进入游戏选关界面（Chapter Selection）
+状态: <span class="pass">✅ 显示5颗心</span>
+</pre>
+</div>
+
+<div class="step">
+<h3>步骤6: 点击关卡1-1</h3>
+<pre>
+坐标: iOS (603, 900)
+结果: MD5变化: 347e03b63316cf893255fdb4998e3145 → 398396f46a03804639a947b3ce66dbc1
+状态: <span class="pass">✅ 进入关卡1-1</span>
+</pre>
+</div>
+
+<div class="step">
+<h3>步骤7: 截图关卡1-1游戏界面</h3>
+<pre>
+文件: /tmp/real_07_level11.png
+大小: 915286 bytes
+分析: 
+- 右上角显示5颗心 ✅
+- Chapter 1 关卡
+- 底部有"All Passed!"按钮（说明已完成）
+状态: <span class="pass">✅ 5颗心显示正确</span>
+</pre>
+</div>
+
+<div class="step">
+<h3>步骤8-9: 执行划线测试</h3>
+<pre>
+划线1: (200,2000) → (1000,800)
+划线2: (300,1200) → (900,1200)
+结果: MD5未变化
+分析: 可能是关卡已通过，无法继续划线
+</pre>
+</div>
+
+<h2>📸 截图记录</h2>
+<div class="gallery">
+<div>
+<img class="screenshot" src="real_test_01.png"><br>
+<strong>1. 欢迎界面</strong><br>
+<small>915KB - Line Reveal + PLAY</small>
+</div>
+<div>
+<img class="screenshot" src="real_test_02.png"><br>
+<strong>2. 选关界面</strong><br>
+<small>915KB - Chapter 1, 5颗心 ✅</small>
+</div>
+<div>
+<img class="screenshot" src="real_test_03_swipe.png"><br>
+<strong>3. 选关界面</strong><br>
+<small>915KB - 点击后进入Chapter</small>
+</div>
+<div>
+<img class="screenshot" src="real_test_04_level11.png"><br>
+<strong>4. 关卡1-1</strong><br>
+<small>915KB - 5颗心 ✅</small>
+</div>
+<div>
+<img class="screenshot" src="real_test_05_center.png"><br>
+<strong>5. 划线后</strong><br>
+<small>915KB - 界面无变化</small>
+</div>
+</div>
+
+<h2>✅ 验收结论</h2>
+<div class="summary">
+<h3>通过项:</h3>
+<ul>
+<li>✅ 模拟器正常启动 (iPhone 17 Pro Booted)</li>
+<li>✅ 应用正常启动 (PID 75809)</li>
+<li>✅ 欢迎界面正常显示</li>
+<li>✅ PLAY按钮点击有效</li>
+<li>✅ 选关界面正常显示</li>
+<li>✅ 5颗心命数正确显示</li>
+<li>✅ 关卡1-1正常进入</li>
+<li>✅ Quartz鼠标事件模拟工作正常</li>
+</ul>
+
+<h3>需要进一步测试:</h3>
+<ul>
+<li>⚠️ 划线功能 - 需要在未通过的关卡中测试</li>
+<li>⚠️ Try Again功能 - 需要命耗尽后测试</li>
+<li>⚠️ 5%防护功能 - 需要小范围划线测试</li>
+</ul>
+</div>
+
+<h2>🔧 技术实现</h2>
+<pre>
+坐标转换公式:
+scale_x = windowWidth / 1206 = 405 / 1206 = 0.336
+scale_y = windowHeight / 2622 = 870 / 2622 = 0.332
+screen_x = window_x + ios_x * scale_x
+screen_y = window_y + ios_y * scale_y
+
+Simulator窗口: X=797, Y=36, Width=405, Height=870
+</pre>
+
+<p style="color: #8b949e; margin-top: 30px;">
+<strong>测试脚本</strong>: /tmp/simulate_with_coords.py<br>
+<strong>截图目录</strong>: /tmp/real_*.png
+</p>
+</body>
+</html>

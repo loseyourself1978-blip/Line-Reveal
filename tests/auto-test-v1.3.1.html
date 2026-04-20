@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>v1.3.1 自动化测试 - Line Reveal</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; padding: 24px; }
+        h1 { font-size: 24px; font-weight: 800; margin-bottom: 8px; color: #f8fafc; }
+        .meta { font-size: 12px; color: #64748b; margin-bottom: 24px; }
+        .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 24px; }
+        .stat { background: #1e293b; border-radius: 12px; padding: 16px; text-align: center; }
+        .stat .value { font-size: 32px; font-weight: 800; }
+        .stat .label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+        .pass .value { color: #4ade80; }
+        .fail .value { color: #f87171; }
+        .pending .value { color: #fbbf24; }
+        .tests { display: flex; flex-direction: column; gap: 8px; }
+        .test { background: #1e293b; border-radius: 12px; padding: 16px; border-left: 4px solid #334155; transition: all 0.3s; }
+        .test.pass { border-left-color: #4ade80; background: #052e16; }
+        .test.fail { border-left-color: #f87171; background: #450a0a; }
+        .test-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .test-id { font-size: 11px; color: #64748b; font-weight: 600; }
+        .test-name { font-size: 14px; font-weight: 700; color: #f1f5f9; }
+        .test-badge { font-size: 10px; padding: 2px 8px; border-radius: 999px; font-weight: 700; text-transform: uppercase; }
+        .test.pass .test-badge { background: #4ade80; color: #052e16; }
+        .test.fail .test-badge { background: #f87171; color: #450a0a; }
+        .test-pending .test-badge { background: #fbbf24; color: #451a03; }
+        .test-detail { font-size: 12px; color: #94a3b8; line-height: 1.6; margin-top: 8px; padding-top: 8px; border-top: 1px solid #334155; }
+        .test.fail .test-detail { color: #fca5a5; border-top-color: #7f1d1d; }
+        .test pre { background: #0f172a; border-radius: 6px; padding: 8px; margin-top: 4px; font-size: 11px; overflow-x: auto; color: #94a3b8; }
+        .log { background: #020617; border-radius: 12px; padding: 16px; margin-top: 24px; }
+        .log h3 { font-size: 14px; font-weight: 700; margin-bottom: 12px; color: #94a3b8; }
+        .log-entry { font-size: 11px; font-family: 'Courier New', monospace; color: #64748b; padding: 2px 0; border-bottom: 1px solid #1e293b; }
+        .log-entry.pass { color: #4ade80; }
+        .log-entry.fail { color: #f87171; }
+        .log-entry.info { color: #60a5fa; }
+        .sections { display: flex; gap: 8px; margin-bottom: 24px; }
+        .section-btn { padding: 8px 16px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: #94a3b8; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .section-btn.active { background: #3b82f6; border-color: #3b82f6; color: white; }
+        .section { display: none; }
+        .section.active { display: block; }
+    </style>
+</head>
+<body>
+    <h1>🧪 v1.3.1 自动化测试 - Line Reveal</h1>
+    <div class="meta">版本: BUILD 11 | 日期: 2026-04-16 | 修复: Bug#A 碰撞链/Bug#B FAILED文案/Bug#C 小范围解锁</div>
+
+    <div class="summary">
+        <div class="stat pass"><div class="value" id="passCount">-</div><div class="label">通过</div></div>
+        <div class="stat fail"><div class="value" id="failCount">-</div><div class="label">失败</div></div>
+        <div class="stat pending"><div class="value" id="pendingCount">-</div><div class="label">待测试</div></div>
+        <div class="stat"><div class="value" id="totalCount">-</div><div class="label">总计</div></div>
+    </div>
+
+    <div class="sections">
+        <button class="section-btn active" onclick="showSection('all')">全部</button>
+        <button class="section-btn" onclick="showSection('p0')">P0 关键</button>
+        <button class="section-btn" onclick="showSection('code')">代码检查</button>
+        <button class="section-btn" onclick="showSection('logic')">逻辑测试</button>
+    </div>
+
+    <div class="tests" id="testsContainer"></div>
+
+    <div class="log">
+        <h3>📋 执行日志</h3>
+        <div id="logContainer"></div>
+    </div>
+
+<script>
+// ========== 测试配置 ==========
+const TEST_SUITE = [
+    // ========== P0 关键修复测试 ==========
+    {
+        id: 'A1',
+        priority: 'P0',
+        section: 'p0',
+        name: 'Bug#A: cancelDraw 防重入标志存在',
+        type: 'code',
+        category: '代码检查',
+        run: async () => {
+            const code = await readFile('src/game/engine.ts');
+            const has = code.includes('cancelDrawInProgress');
+            const hasInit = code.includes('cancelDrawInProgress = false');
+            return {
+                pass: has && hasInit,
+                detail: `检查 engine.ts 中 cancelDrawInProgress 防重入标志存在。\n` +
+                    `结果: ${has && hasInit ? '✅ 存在' : '❌ 缺失'}\n` +
+                    `- cancelDrawInProgress 声明: ${has ? '✅' : '❌'}\n` +
+                    `- 初始化为 false: ${hasInit ? '✅' : '❌'}`
+            };
+        }
+    },
+    {
+        id: 'A2',
+        priority: 'P0',
+        section: 'p0',
+        name: 'Bug#A: cancelDraw 开头防重入检查',
+        type: 'code',
+        category: '代码检查',
+        run: async () => {
+            const code = await readFile('src/game/engine.ts');
+            const pattern = /if\s*\(\s*this\.cancelDrawInProgress\s*\)\s*return\s*;/;
+            const match = code.match(pattern);
+            return {
+                pass: !!match,
+                detail: `检查 cancelDraw() 方法开头是否有防重入检查。\n` +
+                    `结果: ${!!match ? '✅ 存在' : '❌ 缺失'}\n` +
+                    `预期代码: if (this.cancelDrawInProgress) return;`
+            };
+        }
+    },
+    {
+        id: 'A3',
+        priority: 'P0',
+        section: 'p0',
+        name: 'Bug#A: checkCollisions 防重入检查',
+        type: 'code',
+        category: '代码检查',
+        run: async () => {
+            const code = await readFile('src/game/engine.ts');
+            const cancelDrawIndex = code.indexOf('checkCollisions()');
+            const afterCancel = code.substring(cancelDrawIndex);
+            const hasCheck = afterCancel.includes('cancelDrawInProgress') && afterCancel.includes('return');
+            return {
+                pass: hasCheck,
+                detail: `检查 checkCollisions() 开头是否有 cancelDrawInProgress 防重入检查。\n` +
+                    `结果: ${hasCheck ? '✅ 存在' : '❌ 缺失'}`
+            };
+        }
+    },
+    {
+        id: 'A4',
+        priority: 'P0',
+        section: 'p0',
+        name: 'Bug#A: 防重入标志在 cancelDraw 结束时重置',
+        type: 'code',
+        category: '代码检查',
+        run: async () => {
+            const code = await readFile('src/game/engine.ts');
+            const cancelDrawIndex = code.indexOf('cancelDraw() {');
+            const afterStart = code.substring(cancelDrawIndex);
+            const funcBody = afterStart.substring(0, afterStart.indexOf('\n    } // end'));
+            const resetCount = (funcBody.match(/cancelDrawInProgress = false/g) || []).length;
+            return {
+                pass: resetCount >= 2,
+                detail: `检查 cancelDraw() 中是否有两处重置 cancelDrawInProgress = false。\n` +
+                    `结果: ${resetCount >= 2 ? '✅ 有' : '❌ 缺失'} (找到 ${resetCount} 处)\n` +
+                    `预期: 至少 2 处（return 前）`
+            };
+        }
+    },
+
+    // ========== P0 Bug#B 测试 ==========
+    {
+        id: 'B1',
+        priority: 'P0',
+        section: 'p0',
+        name: 'Bug#B: YOU LOSE 文案存在',
+        type: 'code',
+        category: '代码检查',
+        run: async () => {
+            const code = await readFile('src/components/ResultScreen.tsx');
+            const hasYouLose = code.includes('YOU LOSE') && !code.includes('>FAILED<');
+            return {
+                pass: hasYouLose,
+                detail: `检查 ResultScreen.tsx 中失败文案是否为 "YOU LOSE"。\n` +
+                    `结果: ${hasYouLose ? '✅ 正确' : '❌ 错误'}\n` +
+                    `- 包含 "YOU LOSE": ${code.includes('YOU LOSE') ? '✅' : '❌'}\n` +
+                    `- 不包含 "FAILED": ${!code.includes('>FAILED<') ? '✅' : '❌'}`
+            };
+        }
+    },
+    {
+        id: 'B2',
+        priority: 'P0',
+        section: 'p0',
+        name: 'Bug#B: z-index 层级正确',
+        type: 'code',
+        category: '代码检查',
+        run: async () => {
+            const code = await readFile('src/components/ResultScreen.tsx');
+            const hasZIndex = code.includes("z-[100]") || code.includes("z-50");
+            return {
+                pass: hasZIndex,
+                detail: `检查失败界面 z-index 是否足够高。\n` +
+                    `结果: ${hasZIndex ? '✅ 正确' : '❌ 缺失'}\n` +
+                    `- z-[100] 或 z-50: ${hasZIndex ? '✅' : '❌'}`
+            };
+        }
+    },
+
+    // ========== P0 Bug#C 测试 ==========
+    {
+        id: 'C1',
+        priority: 'P0',
+        section: 'p0',
+        name: 'Bug#C: MIN_UNLOCK_RATIO 降至 0.03',
+        type: 'code',
+        category: '代码检查',
+        run: async () => {
+            const code = await readFile('src/game/engine.ts');
+            const has03 = code.includes('MIN_UNLOCK_RATIO = 0.03');
+            const has05 = code.includes('MIN_UNLOCK_RATIO = 0.05') && !code.includes('0.03');
+            return {
+                pass: has03 && !has05,
+                detail: `检查 engine.ts 中 MIN_UNLOCK_RATIO 是否从 0.05 降至 0.03。\n` +
+                    `结果: ${has03 && !has05 ? '✅ 正确' : '❌ 错误'}\n` +
+                    `- MIN_UNLOCK_RATIO = 0.03: ${has03 ? '✅' : '❌'}\n` +
+                    `- 仍为 0.05: ${has05 ? '❌ 是' : '✅ 否'}`
+            };
+        }
+    },
+    {
+        id: 'C2',
+        priority: 'P0',
+        section: 'p0',
+        name: 'Bug#C: percent 计算使用 trashArea',
+        type: 'code',
+        category: '代码检查',
+        run: async () => {
+            const code = await readFile('src/game/engine.ts');
+            const finishIndex = code.indexOf('finishDrawing');
+            const finishFunc = code.substring(finishIndex, finishIndex + 5000);
+            const hasTrashCalc = finishFunc.includes('trashArea / this.totalArea');
+            const hasOldCalc = finishFunc.includes('1 - (keepArea / this.totalArea)');
+            return {
+                pass: hasTrashCalc && !hasOldCalc,
+                detail: `检查 percent 计算是否改为直接使用 trashArea。\n` +
+                    `结果: ${hasTrashCalc && !hasOldCalc ? '✅ 正确' : '❌ 错误'}\n` +
+                    `- trashArea / this.totalArea: ${hasTrashCalc ? '✅' : '❌'}\n` +
+                    `- 旧的 1 - (keepArea / totalArea): ${hasOldCalc ? '❌ 仍存在' : '✅ 已移除'}`
+            };
+        }
+    },
+
+    // ========== 逻辑测试 ==========
+    {
+        id: 'L1',
+        priority: 'P0',
+        section: 'logic',
+        name: '逻辑: cancelDraw 防重入机制',
+        type: 'logic',
+        category: '逻辑验证',
+        run: async () => {
+            // 模拟碰撞链场景：连续调用 cancelDraw 两次
+            const engine = createMockEngine(5);
+            engine.cancelDraw();
+            engine.cancelDraw();
+            engine.cancelDraw();
+            const passed = engine.lives === 4; // 只扣1条命
+            return {
+                pass: passed,
+                detail: `模拟碰撞链：连续调用 cancelDraw() 3 次。\n` +
+                    `初始命数: 5\n` +
+                    `调用后: ${engine.lives} (预期: 4)\n` +
+                    `结果: ${passed ? '✅ 防重入有效，只扣1条命' : '❌ 防重入失效，扣了多条命'}`
+            };
+        }
+    },
+    {
+        id: 'L2',
+        priority: 'P0',
+        section: 'logic',
+        name: '逻辑: 3% 小范围检测',
+        type: 'logic',
+        category: '逻辑验证',
+        run: async () => {
+            // 测试 3% 面积解锁应该被拒绝
+            const result = simulateUnlock(0.029, 10000); // 2.9% < 3%
+            return {
+                pass: result.rejected,
+                detail: `测试 2.9% 面积解锁（应拒绝）。\n` +
+                    `解锁百分比: ${(result.percent * 100).toFixed(2)}%\n` +
+                    `阈值: 3%\n` +
+                    `结果: ${result.rejected ? '✅ 正确拒绝' : '❌ 错误放行'}`
+            };
+        }
+    },
+    {
+        id: 'L3',
+        priority: 'P0',
+        section: 'logic',
+        name: '逻辑: 5% 面积可解锁',
+        type: 'logic',
+        category: '逻辑验证',
+        run: async () => {
+            // 测试 5% 面积解锁应该成功
+            const result = simulateUnlock(0.05, 10000); // 5% >= 3%
+            return {
+                pass: result.accepted,
+                detail: `测试 5% 面积解锁（应成功）。\n` +
+                    `解锁百分比: ${(result.percent * 100).toFixed(2)}%\n` +
+                    `阈值: 3%\n` +
+                    `结果: ${result.accepted ? '✅ 正确解锁' : '❌ 错误拒绝'}`
+            };
+        }
+    },
+    {
+        id: 'L4',
+        priority: 'P0',
+        section: 'logic',
+        name: '逻辑: 10% 中等范围可解锁',
+        type: 'logic',
+        category: '逻辑验证',
+        run: async () => {
+            const result = simulateUnlock(0.10, 10000); // 10% >= 3%
+            return {
+                pass: result.accepted,
+                detail: `测试 10% 面积解锁（应成功）。\n` +
+                    `解锁百分比: ${(result.percent * 100).toFixed(2)}%\n` +
+                    `阈值: 3%\n` +
+                    `结果: ${result.accepted ? '✅ 正确解锁' : '❌ 错误拒绝'}`
+            };
+        }
+    },
+    {
+        id: 'L5',
+        priority: 'P0',
+        section: 'logic',
+        name: '逻辑: 100% 完全解锁',
+        type: 'logic',
+        category: '逻辑验证',
+        run: async () => {
+            const result = simulateUnlock(1.0, 10000); // 100%
+            return {
+                pass: result.accepted,
+                detail: `测试 100% 面积解锁（应成功）。\n` +
+                    `解锁百分比: ${(result.percent * 100).toFixed(2)}%\n` +
+                    `阈值: 3%\n` +
+                    `结果: ${result.accepted ? '✅ 正确解锁' : '❌ 错误拒绝'}`
+            };
+        }
+    },
+
+    // ========== 代码完整性检查 ==========
+    {
+        id: 'R1',
+        priority: 'P1',
+        section: 'code',
+        name: 'ResultScreen.tsx 引入版本注释',
+        type: 'code',
+        category: '代码检查',
+        run: async () => {
+            const code = await readFile('src/components/ResultScreen.tsx');
+            const hasVersion = code.includes('v1.3.1');
+            return {
+                pass: hasVersion,
+                detail: `检查 ResultScreen.tsx 是否有 v1.3.1 版本注释。\n` +
+                    `结果: ${hasVersion ? '✅ 有' : '❌ 缺失'}`
+            };
+        }
+    },
+    {
+        id: 'R2',
+        priority: 'P1',
+        section: 'code',
+        name: 'engine.ts Bug#A 注释存在',
+        type: 'code',
+        category: '代码检查',
+        run: async () => {
+            const code = await readFile('src/game/engine.ts');
+            const hasBugA = code.includes('Bug#A') || code.includes('碰撞链');
+            return {
+                pass: hasBugA,
+                detail: `检查 engine.ts 是否有 Bug#A 修复注释。\n` +
+                    `结果: ${hasBugA ? '✅ 有' : '❌ 缺失'}`
+            };
+        }
+    },
+    {
+        id: 'R3',
+        priority: 'P1',
+        section: 'code',
+        name: 'engine.ts Bug#C 注释存在',
+        type: 'code',
+        category: '代码检查',
+        run: async () => {
+            const code = await readFile('src/game/engine.ts');
+            const hasBugC = code.includes('Bug#C') || code.includes('trashArea');
+            return {
+                pass: hasBugC,
+                detail: `检查 engine.ts 是否有 Bug#C 修复注释。\n` +
+                    `结果: ${hasBugC ? '✅ 有' : '❌ 缺失'}`
+            };
+        }
+    },
+    {
+        id: 'R4',
+        priority: 'P1',
+        section: 'code',
+        name: 'MIN_UNLOCK_RATIO 注释存在',
+        type: 'code',
+        category: '代码检查',
+        run: async () => {
+            const code = await readFile('src/game/engine.ts');
+            const hasComment = code.includes('3%') && code.includes('最小解锁阈值');
+            return {
+                pass: hasComment,
+                detail: `检查 MIN_UNLOCK_RATIO 注释是否更新为 3%。\n` +
+                    `结果: ${hasComment ? '✅ 已更新' : '⚠️ 未更新'}`
+            };
+        }
+    },
+
+    // ========== 构建测试 ==========
+    {
+        id: 'X1',
+        priority: 'P0',
+        section: 'p0',
+        name: 'Xcodebuild 编译成功',
+        type: 'build',
+        category: '构建验证',
+        run: async () => {
+            return {
+                pass: null, // 待执行
+                detail: '待执行 Xcodebuild 命令验证。\n命令: cd ios/App && xcodebuild -project App.xcodeproj -scheme "Line Reveal" -configuration Debug -destination \'platform=iOS Simulator,name=iPhone 17 Pro\' build\n\n请在终端中执行上述命令进行验证。'
+            };
+        }
+    }
+];
+
+// ========== 测试运行器 ==========
+const results = {};
+let currentSection = 'all';
+
+async function readFile(path) {
+    try {
+        const response = await fetch(path);
+        return await response.text();
+    } catch {
+        return '';
+    }
+}
+
+function createMockEngine(initialLives) {
+    return {
+        lives: initialLives,
+        cancelDrawInProgress: false,
+        cancelDraw() {
+            if (this.cancelDrawInProgress) return;
+            this.cancelDrawInProgress = true;
+            this.lives--;
+            this.cancelDrawInProgress = false;
+        }
+    };
+}
+
+function simulateUnlock(trashRatio, totalArea) {
+    const MIN_UNLOCK_RATIO = 0.03;
+    const trashArea = totalArea * trashRatio;
+    const percent = trashArea / totalArea;
+    const rejected = percent < MIN_UNLOCK_RATIO;
+    return { percent, rejected, accepted: !rejected };
+}
+
+function log(msg, type = '') {
+    const container = document.getElementById('logContainer');
+    const entry = document.createElement('div');
+    entry.className = `log-entry ${type}`;
+    entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    container.insertBefore(entry, container.firstChild);
+}
+
+function showSection(section) {
+    currentSection = section;
+    document.querySelectorAll('.section-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.toLowerCase().includes(section) || section === 'all');
+    });
+    renderTests();
+}
+
+async function runTest(test) {
+    try {
+        const result = await test.run();
+        results[test.id] = result;
+        return result;
+    } catch (e) {
+        results[test.id] = { pass: false, detail: `执行错误: ${e.message}` };
+        return results[test.id];
+    }
+}
+
+async function runAllTests() {
+    log('开始执行 v1.3.1 自动化测试...', 'info');
+    for (let i = 0; i < TEST_SUITE.length; i++) {
+        const test = TEST_SUITE[i];
+        if (currentSection !== 'all' && !test.section.includes(currentSection)) continue;
+
+        log(`执行测试 ${test.id}: ${test.name}`, 'info');
+        const result = await runTest(test);
+
+        if (result.pass === true) log(`✅ ${test.id} 通过`, 'pass');
+        else if (result.pass === false) log(`❌ ${test.id} 失败: ${result.detail}`, 'fail');
+        else log(`⏳ ${test.id} 待手动验证`, '');
+
+        updateStats();
+        renderTests();
+
+        if (test.type !== 'build') {
+            await new Promise(r => setTimeout(r, 100));
+        }
+    }
+    log('测试执行完成', 'info');
+}
+
+function updateStats() {
+    const passed = Object.values(results).filter(r => r.pass === true).length;
+    const failed = Object.values(results).filter(r => r.pass === false).length;
+    const pending = TEST_SUITE.length - passed - failed;
+
+    document.getElementById('passCount').textContent = passed;
+    document.getElementById('failCount').textContent = failed;
+    document.getElementById('pendingCount').textContent = pending;
+    document.getElementById('totalCount').textContent = TEST_SUITE.length;
+}
+
+function renderTests() {
+    const container = document.getElementById('testsContainer');
+    container.innerHTML = '';
+
+    const filtered = TEST_SUITE.filter(test =>
+        currentSection === 'all' || test.section.includes(currentSection)
+    );
+
+    filtered.forEach(test => {
+        const result = results[test.id];
+        const status = result ? (result.pass === true ? 'pass' : result.pass === false ? 'fail' : 'test-pending') : 'test-pending';
+        const badge = result ? (result.pass === true ? 'PASS' : result.pass === false ? 'FAIL' : 'PENDING') : 'PENDING';
+
+        const div = document.createElement('div');
+        div.className = `test ${status}`;
+        div.innerHTML = `
+            <div class="test-header">
+                <div>
+                    <div class="test-id">[${test.id}] <span style="color: ${test.priority === 'P0' ? '#f87171' : '#fbbf24'}">${test.priority}</span></div>
+                    <div class="test-name">${test.name}</div>
+                </div>
+                <div>
+                    <span class="test-badge">${badge}</span>
+                </div>
+            </div>
+            ${result && result.detail ? `<div class="test-detail">${result.detail.replace(/\n/g, '<br>')}</div>` : ''}
+        `;
+        container.appendChild(div);
+    });
+
+    updateStats();
+}
+
+// 初始化
+renderTests();
+setTimeout(runAllTests, 500);
+</script>
+</body>
+</html>

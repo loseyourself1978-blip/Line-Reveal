@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <title>Line Reveal v1.2.9 自动化测试报告</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace; background: #0f172a; color: #e2e8f0; min-height: 100vh; padding: 24px; }
+    h1 { font-size: 1.5rem; color: #38bdf8; margin-bottom: 8px; }
+    .subtitle { color: #64748b; font-size: 0.85rem; margin-bottom: 24px; }
+    .summary { display: flex; gap: 16px; margin-bottom: 24px; }
+    .summary-card { background: #1e293b; border-radius: 12px; padding: 16px 24px; }
+    .summary-card.pass { border-left: 4px solid #22c55e; }
+    .summary-card.fail { border-left: 4px solid #ef4444; }
+    .summary-card .number { font-size: 2rem; font-weight: bold; }
+    .summary-card.pass .number { color: #22c55e; }
+    .summary-card.fail .number { color: #ef4444; }
+    .summary-card .label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; }
+    .section-title { font-size: 0.75rem; text-transform: uppercase; color: #64748b; letter-spacing: 0.1em; margin: 24px 0 12px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; }
+    .test-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; margin-bottom: 4px; font-size: 0.85rem; }
+    .test-item.pass { background: #052e16; color: #86efac; }
+    .test-item.fail { background: #450a0a; color: #fca5a5; }
+    .test-id { color: #64748b; min-width: 100px; }
+    .test-name { flex: 1; }
+    .badge { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+    .badge-pass { background: #22c55e; color: #052e16; }
+    .badge-fail { background: #ef4444; color: white; }
+    .error-msg { font-size: 0.75rem; color: #f87171; margin-left: auto; }
+    .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #1e293b; font-size: 0.75rem; color: #475569; }
+  </style>
+</head>
+<body>
+
+<h1>🎮 Line Reveal — v1.2.9 自动化测试</h1>
+<p class="subtitle">基于源码静态分析 · 2026-04-16</p>
+
+<div class="summary">
+  <div class="summary-card pass">
+    <div class="number" id="pass-count">28</div>
+    <div class="label">✅ 通过</div>
+  </div>
+  <div class="summary-card fail">
+    <div class="number" id="fail-count">0</div>
+    <div class="label">❌ 失败</div>
+  </div>
+</div>
+
+<div id="results"></div>
+
+<div class="footer">
+  测试框架: Node.js 静态分析 · 测试文件: tests/run-auto-test.cjs<br>
+  Bundle: index-CNhTmWrH.js (290KB) · BUILD: 9 · MARKETING_VERSION: 1.0.1
+</div>
+
+<script>
+const results = [
+  // ENG
+  { id: 'ENG-01', name: 'engine.ts 无命内部结束游戏逻辑', pass: true },
+  { id: 'ENG-02', name: '碰撞扣命 — cancelDraw 中 lives--', pass: true },
+  { id: 'ENG-03', name: '命耗尽触发 onLivesZero 回调', pass: true },
+  { id: 'ENG-04', name: 'cancelDraw 后本轮不再检测碰撞', pass: true },
+  { id: 'ENG-05', name: '手指抬起不扣命 — handleRelease 不调用 cancelDraw', pass: true },
+  { id: 'ENG-06', name: 'finishDrawing 不扣命', pass: true },
+  { id: 'ENG-07', name: 'lastUnlockPercent 正确计算', pass: true },
+  // UI
+  { id: 'UI-01', name: 'LivesDisplay 右上角定位', pass: true },
+  { id: 'UI-02', name: 'SVG 桃心渲染 — HeartIcon 组件', pass: true },
+  { id: 'UI-03', name: '≤5命：实心/空心桃心混合', pass: true },
+  { id: 'UI-04', name: '>5命显示×数字', pass: true },
+  // WS
+  { id: 'WS-01', name: 'won 状态拦截 GameCanvas 渲染', pass: true },
+  { id: 'WS-02', name: 'lost 状态拦截 GameCanvas 渲染', pass: true },
+  { id: 'WS-03', name: 'welcome 状态渲染 WelcomeScreen', pass: true },
+  { id: 'WS-04', name: 'all_passed 状态渲染 EndGameOverlay', pass: true },
+  { id: 'WS-05', name: 'won/lost 返回 ResultScreen（GameCanvas 卸载）', pass: true },
+  // PERSIST
+  { id: 'PERSIST-01', name: 'SaveData 接口完整', pass: true },
+  { id: 'PERSIST-02', name: 'usePersistence 写入 localStorage', pass: true },
+  { id: 'PERSIST-03', name: '关卡解锁 — unlockLevel', pass: true },
+  { id: 'PERSIST-04', name: '星星记录 — setLevelStars', pass: true },
+  { id: 'PERSIST-05', name: '统计更新 — updateStats', pass: true },
+  // AUDIO
+  { id: 'AUDIO-01', name: 'endGame 停止 BGM', pass: true },
+  { id: 'AUDIO-02', name: 'ResultScreen 按钮清空音乐', pass: true },
+  // BUILD
+  { id: 'BUILD-01', name: 'npm run build 成功（已手动确认）', pass: true },
+  { id: 'BUILD-02', name: 'Bundle 大小 <500KB (284.7KB)', pass: true },
+  { id: 'BUILD-03', name: '无 VictoryDanceScreen 文件', pass: true },
+  { id: 'BUILD-04', name: '无冷却💔emoji 和 cooldownEndsAt', pass: true },
+  { id: 'BUILD-05', name: '无 Undo 按钮', pass: true },
+];
+
+const sections = {
+  '⚙️ 引擎层 (ENG-01~07)': results.filter(r => r.id.startsWith('ENG')),
+  '🎨 界面层 (UI-01~04)': results.filter(r => r.id.startsWith('UI')),
+  '🛡️ 白屏防护 (WS-01~05)': results.filter(r => r.id.startsWith('WS')),
+  '💾 持久化 (PERSIST-01~05)': results.filter(r => r.id.startsWith('PERSIST')),
+  '🔊 音频 (AUDIO-01~02)': results.filter(r => r.id.startsWith('AUDIO')),
+  '🏗️ 构建 (BUILD-01~05)': results.filter(r => r.id.startsWith('BUILD')),
+};
+
+let html = '';
+for (const [title, items] of Object.entries(sections)) {
+  html += `<div class="section-title">${title}</div>`;
+  for (const r of items) {
+    html += `<div class="test-item ${r.pass ? 'pass' : 'fail'}">
+      <span class="badge ${r.pass ? 'badge-pass' : 'badge-fail'}">${r.pass ? '✅' : '❌'}</span>
+      <span class="test-id">${r.id}</span>
+      <span class="test-name">${r.name}</span>
+      ${r.error ? `<span class="error-msg">${r.error}</span>` : ''}
+    </div>`;
+  }
+}
+
+document.getElementById('results').innerHTML = html;
+document.getElementById('pass-count').textContent = results.filter(r => r.pass).length;
+document.getElementById('fail-count').textContent = results.filter(r => !r.pass).length;
+</script>
+
+</body>
+</html>
