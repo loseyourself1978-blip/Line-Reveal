@@ -197,9 +197,10 @@ export class GameEngine {
     targetInputPos: Point | null = null;
 
     handleInput(e: PointerEvent) {
-        if (!this.canvasRef.current || this.isWon) return;
+        if (!this.canvasRef.current) return;
         const rect = this.canvasRef.current.getBoundingClientRect();
         this.targetInputPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        // v1.4.0: 胜利后点击显示 ResultScreen
         if (this.isWon && this.showTapHint && this.onWonClick) {
             this.onWonClick();
         }
@@ -254,10 +255,15 @@ export class GameEngine {
 
     update(dt: number) {
         if (this.isWon) {
+            // v1.4.0: 迷雾消散动画（2.5 秒完成）
             if (this.winAnimProgress < 1) {
                 this.winAnimProgress = Math.min(1, this.winAnimProgress + dt * 0.4);
-                if (this.winAnimProgress >= 1) this.showTapHint = true;
+                if (this.winAnimProgress >= 1) {
+                    this.showTapHint = true;
+                    this.hintBlinkTime = 0;
+                }
             }
+            // v1.4.0: 提示闪烁动画（0.5 秒周期）
             if (this.showTapHint) {
                 this.hintBlinkTime += dt;
                 this.hintVisible = Math.sin(this.hintBlinkTime * Math.PI * 2) > 0;
@@ -410,77 +416,87 @@ export class GameEngine {
         if (!this.ctx || !this.canvasRef.current) return;
         const { width, height } = this.canvasRef.current;
         this.ctx.clearRect(0, 0, width, height);
+        
+        // 1. 绘制背景图片
         if (this.bgImage && this.bgImage.complete) {
             const scale = Math.max(width / this.bgImage.width, height / this.bgImage.height);
             const x = width / 2 - this.bgImage.width / 2 * scale;
             const y = height / 2 - this.bgImage.height / 2 * scale;
             this.ctx.drawImage(this.bgImage, x, y, this.bgImage.width * scale, this.bgImage.height * scale);
         }
+        
+        // 2. 绘制迷雾
         if (this.activePolygon.length > 0) {
             this.ctx.save();
             this.ctx.beginPath();
             this.ctx.moveTo(this.activePolygon[0].x, this.activePolygon[0].y);
-            for (let i = 1; i < this.activePolygon.length; i++) this.ctx.lineTo(this.activePolygon[i].x, this.activePolygon[i].y);
+            for (let i = 1; i < this.activePolygon.length; i++) {
+                this.ctx.lineTo(this.activePolygon[i].x, this.activePolygon[i].y);
+            }
             this.ctx.closePath();
+            
             if (this.isWon) {
+                // v1.4.0: 迷雾从中心圆形消散（优化性能）
                 const centerX = width / 2;
                 const centerY = height / 2;
                 const maxRadius = Math.sqrt(centerX * centerX + centerY * centerY);
                 const currentRadius = maxRadius * this.winAnimProgress;
-                this.ctx.save();
-                this.ctx.beginPath();
-                this.ctx.arc(centerX, centerY, currentRadius, 0, Math.PI * 2);
-                this.ctx.clip();
-                this.ctx.globalAlpha = this.winAnimProgress;
+                
+                // 使用径向渐变优化性能
+                const gradient = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, currentRadius);
+                gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
+                this.ctx.fillStyle = gradient;
                 this.ctx.fill();
-                this.ctx.restore();
-                this.ctx.save();
-                this.ctx.beginPath();
-                this.ctx.arc(centerX, centerY, currentRadius, 0, Math.PI * 2);
-                this.ctx.rect(width, 0, -width, height);
-                this.ctx.clip('evenodd');
-                this.ctx.globalAlpha = 1;
-                this.ctx.fill();
-                this.ctx.restore();
             } else {
+                // Normal fog rendering
                 if (this.fogDensity === 1) this.ctx.globalAlpha = 0.4;
                 else if (this.fogDensity === 2) this.ctx.globalAlpha = 0.8;
                 else this.ctx.globalAlpha = 1.0;
+                this.ctx.fillStyle = '#000000';
                 this.ctx.fill();
             }
             this.ctx.restore();
         }
+        
+        // 3. 胜利后显示提示
         if (this.isWon) {
-            if (this.showTapHint) {
+            if (this.showTapHint && this.hintVisible) {
                 this.ctx.save();
-                if (this.hintVisible) {
-                    this.ctx.globalAlpha = 1;
-                    this.ctx.fillStyle = '#ffffff';
-                    this.ctx.font = 'bold 24px -apple-system, BlinkMacSystemFont, sans-serif';
-                    this.ctx.textAlign = 'center';
-                    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-                    this.ctx.shadowBlur = 10;
-                    this.ctx.fillText('TAP ANYWHERE TO CONTINUE', width / 2, height - 100);
-                }
+                this.ctx.globalAlpha = 1;
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.font = 'bold 24px -apple-system, BlinkMacSystemFont, sans-serif';
+                this.ctx.textAlign = 'center';
+                this.ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+                this.ctx.shadowBlur = 10;
+                this.ctx.fillText('TAP ANYWHERE TO CONTINUE', width / 2, height - 100);
                 this.ctx.restore();
             }
             return;
         }
+        
+        // 4. 绘制划线
         if (this.isDrawing && this.drawPath.length > 1) {
             this.ctx.beginPath();
             this.ctx.moveTo(this.drawPath[0].x, this.drawPath[0].y);
-            for (let i = 1; i < this.drawPath.length; i++) this.ctx.lineTo(this.drawPath[i].x, this.drawPath[i].y);
+            for (let i = 1; i < this.drawPath.length; i++) {
+                this.ctx.lineTo(this.drawPath[i].x, this.drawPath[i].y);
+            }
             this.ctx.strokeStyle = '#facc15';
             this.ctx.lineWidth = 4;
             this.ctx.lineCap = 'round';
             this.ctx.stroke();
         }
+        
+        // 5. 绘制玩家
         this.ctx.beginPath();
         this.ctx.arc(this.playerPos.x, this.playerPos.y, 8, 0, Math.PI * 2);
         this.ctx.fillStyle = '#facc15';
         this.ctx.fill();
         this.ctx.strokeStyle = '#fff';
         this.ctx.stroke();
+        
+        // 6. 绘制精灵
         this.spirits.forEach(s => s.draw(this.ctx!));
     }
 

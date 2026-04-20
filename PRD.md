@@ -1,4 +1,4 @@
-### v1.4.0 (Final): 胜利动画完整交互流程
+### v1.4.0 (Final): 胜利动画完整交互流程（性能优化版）
 
 **背景**: v1.3.3 修复了累计解锁百分比和精灵反弹 NaN 问题，但通关时缺少完整的胜利动画流程。
 
@@ -10,9 +10,10 @@
 
 **修复方案**:
 1. **engine.ts**: 
+   - 使用径向渐变优化迷雾消散性能（避免卡顿）
    - 新增 `showTapHint`, `hintVisible`, `hintBlinkTime` 状态
    - 新增 `onWonClick` 回调
-   - 迷雾从中心圆形消散效果（使用 arc clip）
+   - 迷雾从中心圆形消散效果（使用 radialGradient）
    - 提示文字闪烁动画（sin 波，0.5 秒周期）
    - 点击 Canvas 触发 `onWonClick`
 
@@ -22,7 +23,7 @@
 
 3. **useGame.tsx**: 
    - `endGame(won=true)` 不立即 `setStatus('won')`
-   - 等待用户点击后由 `handleWinClick` 设置状态
+   - 等待用户点击后由 `handleWinClick` 回调处理
 
 4. **App.tsx**: 
    - `status === 'won'` 时显示 ResultScreen
@@ -30,7 +31,7 @@
 **改动文件**:
 | 文件 | 改动 |
 |------|------|
-| `src/game/engine.ts` | 胜利动画流程 + 点击交互 |
+| `src/game/engine.ts` | 径向渐变优化 + 胜利动画流程 + 点击交互 |
 | `src/game/GameCanvas.tsx` | 传递 onWonClick 回调 |
 | `src/hooks/useGame.tsx` | 延迟显示 ResultScreen |
 | `src/App.tsx` | 状态处理 |
@@ -39,7 +40,7 @@
 
 **自动化测试**: 
 - `tests/verify-v1.4.0.js`: 代码逻辑验证
-- `scripts/test-victory-animation.sh`: 模拟器自动化测试
+- `scripts/test-victory-animation.sh`: 模拟器自动化测试（已执行通过）
 
 ---
 
