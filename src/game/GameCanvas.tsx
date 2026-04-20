@@ -4,23 +4,26 @@ import { useGame } from '../hooks/useGame';
 import { LEVELS } from '../data/levels';
 
 /**
- * GameCanvas（v1.3.0）
- *
- * 关键修复：
- * - Bug#1: useEffect 依赖 currentLevelId，确保 Try Again 重试同一关时重新初始化
- * - 固定 5 条命（不受速度影响）
- * - syncInterval：同步解锁百分比、命数、触发胜利
- * - 命耗尽 → onLivesZero → endGame(false)
- *
- * v1.4.0 Bug#1 修复：
- * - 胜利时不要 stop() engine，让 winAnimProgress 动画继续播放 2.5 秒
- * - engine 在 GameCanvas 卸载时自动停止（useEffect cleanup）
+ * GameCanvas v1.4.0
+ * 
+ * 胜利动画流程：
+ * 1. 通关时迷雾从中心逐渐消散（2.5 秒）
+ * 2. 背景图片完整显示
+ * 3. 闪动提示 "TAP ANYWHERE TO CONTINUE"
+ * 4. 用户点击后显示 ResultScreen
  */
 export function GameCanvas() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const engineRef = useRef<GameEngine | null>(null);
     const gameEndedRef = useRef(false);
-    const { currentLevel, currentLevelId, setUnlockedPercent, endGame, saveData, setEngineLives } = useGame();
+    const { currentLevel, currentLevelId, setUnlockedPercent, endGame, saveData, setEngineLives, setStatus} = useGame();
+
+    // v1.4.0: 胜利后用户点击回调
+    const handleWinClick = useRef(() => {
+        if (!gameEndedRef.current) return;
+        gameEndedRef.current = false;
+        setStatus('won');
+    }).current;
 
     useEffect(() => {
         if (!canvasRef.current) return;
@@ -46,7 +49,8 @@ export function GameCanvas() {
                 engine.stop();
                 setEngineLives(0);
                 endGame(false, engine.cumulativeUnlockedPercent, engine.levelTimeElapsed, false);
-            }
+            },
+            onWonClick: handleWinClick // v1.4.0: 胜利后点击回调
         });
 
         const syncInterval = setInterval(() => {
@@ -61,14 +65,14 @@ export function GameCanvas() {
                 setUnlockedPercent(eng.cumulativeUnlockedPercent);
             }
 
-            // v1.4.0 Bug#1 修复：胜利时不要 stop() engine，让动画继续播放
+            // v1.4.0: 胜利检测
             if (eng.cumulativeUnlockedPercent >= levelConfig.unlockThreshold && !eng.isWon && !gameEndedRef.current) {
                 eng.isWon = true;
                 gameEndedRef.current = true;
                 setUnlockedPercent(eng.cumulativeUnlockedPercent);
                 setEngineLives(eng.lives);
-                // 注意：不调用 engine.stop()，让 winAnimProgress 动画播放 2.5 秒
-                // engine 会在 GameCanvas 卸载时自动停止（见 cleanup）
+                // 不调用 engine.stop()，让动画继续播放
+                // 用户点击后由 onWonClick 回调处理
                 endGame(true, eng.cumulativeUnlockedPercent, eng.levelTimeElapsed, eng.lives === eng.initialLives);
             }
         }, 500);

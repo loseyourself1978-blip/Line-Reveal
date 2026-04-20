@@ -1,34 +1,45 @@
-### v1.4.0（2026-04-20）- 当前版本
+### v1.4.0 (Final): 胜利动画完整交互流程
 
-#### Bug 修复：胜利动画完整播放（Revised）
+**背景**: v1.3.3 修复了累计解锁百分比和精灵反弹 NaN 问题，但通关时缺少完整的胜利动画流程。
 
-**背景**：v1.3.3 修复了累计解锁百分比和精灵反弹 NaN 问题，但通关时缺少背景图片渐显动画（winAnimProgress），直接跳到 ResultScreen。
+**新需求**:
+1. 迷雾从中心逐渐消散（圆形扩散效果，2.5 秒）
+2. 背景图片完整显示
+3. 迷雾完全消散后闪动提示 "TAP ANYWHERE TO CONTINUE"
+4. 用户点击后才显示 ResultScreen
 
-**根因分析**：
-1. engine.ts 的 render() 有胜利动画逻辑（winAnimProgress 从 0→1，约 2 秒）
-2. 但 GameCanvas.tsx 检测到胜利后**立即调用 engine.stop()**，导致 RAF 循环停止
-3. 即使 useGame.tsx 延迟 2.5 秒才 setStatus('won')，engine 已停止，动画无法播放
-4. App.tsx 中 status === 'won' 时 GameCanvas 卸载
+**修复方案**:
+1. **engine.ts**: 
+   - 新增 `showTapHint`, `hintVisible`, `hintBlinkTime` 状态
+   - 新增 `onWonClick` 回调
+   - 迷雾从中心圆形消散效果（使用 arc clip）
+   - 提示文字闪烁动画（sin 波，0.5 秒周期）
+   - 点击 Canvas 触发 `onWonClick`
 
-**修复方案**：
-1. **GameCanvas.tsx**：胜利检测时**不调用 engine.stop()**，让 RAF 继续运行动画
-2. **useGame.tsx**：endGame(won=true) 延迟 2.5 秒再 setStatus('won')
-3. **cleanup**：engine 在 GameCanvas 卸载时自动停止（useEffect cleanup）
+2. **GameCanvas.tsx**: 
+   - 传递 `onWonClick` 回调给 engine
+   - 胜利时不调用 `engine.stop()`，让动画继续
 
-**改动文件**：
+3. **useGame.tsx**: 
+   - `endGame(won=true)` 不立即 `setStatus('won')`
+   - 等待用户点击后由 `handleWinClick` 设置状态
+
+4. **App.tsx**: 
+   - `status === 'won'` 时显示 ResultScreen
+
+**改动文件**:
 | 文件 | 改动 |
 |------|------|
-| `src/game/GameCanvas.tsx` | 胜利检测块移除 engine.stop()，让动画继续播放 |
-| `src/hooks/useGame.tsx` | endGame() 胜利分支增加 setTimeout 延迟 2.5 秒 |
+| `src/game/engine.ts` | 胜利动画流程 + 点击交互 |
+| `src/game/GameCanvas.tsx` | 传递 onWonClick 回调 |
+| `src/hooks/useGame.tsx` | 延迟显示 ResultScreen |
+| `src/App.tsx` | 状态处理 |
 
-**Bug#2 确认**：
-- 检查 Git 历史（commit 9cc497f, af52c3a）发现舞蹈功能曾在 v1.2.7 之前存在
-- 当前代码库已无 VictoryDanceScreen 组件，舞蹈功能已移除
-- 无需额外修复
+**Bug#2 确认**: 舞蹈功能已在之前版本移除，无需修复
 
-**自动化测试**：
-- `tests/verify-v1.4.0.js`：代码逻辑验证（2/2 通过）
-- `tests/auto-test-v1.4.0.html`：Web 实时测试报告
+**自动化测试**: 
+- `tests/verify-v1.4.0.js`: 代码逻辑验证
+- `scripts/test-victory-animation.sh`: 模拟器自动化测试
 
 ---
 
@@ -53,11 +64,11 @@
 
 ## 产品概述
 
-- **游戏名称**：划线解锁神图（Line Reveal）
-- **平台**：iOS（Capacitor 混合应用）
-- **技术栈**：React 19 + TypeScript + Vite + Capacitor + TailwindCSS
-- **App ID**：`com.linereveal.game`
-- **核心玩法**：玩家在黑色迷雾覆盖的画布上划线，把大精灵隔离在越来越小的区域里，解锁底层神秘图片。
+- **游戏名称**: 划线解锁神图（Line Reveal）
+- **平台**: iOS（Capacitor 混合应用）
+- **技术栈**: React 19 + TypeScript + Vite + Capacitor + TailwindCSS
+- **App ID**: `com.linereveal.game`
+- **核心玩法**: 玩家在黑色迷雾覆盖的画布上划线，把大精灵隔离在越来越小的区域里，解锁底层神秘图片。
 
 ---
 
@@ -78,7 +89,7 @@
 
 ### 初始状态
 - 每个玩家初始拥有 **5 条命**
-- 右上角显示 **红桃心 SVG**：`LivesDisplay` React 组件，≤5 颗显示实心/空心桃心，>5 显示 `❤️ ×数字`
+- 右上角显示 **红桃心 SVG**: `LivesDisplay` React 组件，≤5 颗显示实心/空心桃心，>5 显示 `❤️ ×数字`
 - 当命数 > 10 时，改为显示：`❤️ ×数字`
 
 ### 扣命触发条件
@@ -89,8 +100,8 @@
 | Match-3 | 倒计时归零时未完成所有消除 |
 
 ### 扣命技术细节（v1.1.2 核心修复）
-- **Engine 层职责**：仅维护 `hitCount++`（碰撞计数器递增），不维护本地 lives 状态，不在 Canvas 上渲染任何 LIVES 文字
-- **React 层职责**：`GameCanvas.tsx` 每 500ms 轮询 `engine.hitCount` 增量，调用 `hitBySpirit()` → `spendLife()` → `remaining === 0` 才 gameover
+- **Engine 层职责**: 仅维护 `hitCount++`（碰撞计数器递增），不维护本地 lives 状态，不在 Canvas 上渲染任何 LIVES 文字
+- **React 层职责**: `GameCanvas.tsx` 每 500ms 轮询 `engine.hitCount` 增量，调用 `hitBySpirit()` → `spendLife()` → `remaining === 0` 才 gameover
 
 ### 加命触发条件
 - **任意模式**通关后：+1 条命（`earnLife()` 同时取消当前冷却等待）
@@ -128,7 +139,7 @@
 | spider（蜘蛛）| 深灰/深绿 | 爬行，方向多变 | 腿部交替摆动 |
 | teleport（传送）| 青绿色 | 定期瞬移 | 电光菱形闪烁 |
 
-> **修复项**：所有精灵禁止使用纯黑色（`#000000`），最暗不超过深灰 `#333333`，确保在黑色背景上可见
+> **修复项**: 所有精灵禁止使用纯黑色（`#000000`），最暗不超过深灰 `#333333`，确保在黑色背景上可见
 
 ### 碰撞逻辑
 - 划线途中：玩家路径与任意精灵圆形碰撞检测
@@ -238,4 +249,3 @@
 ## CHANGELOG
 
 （v1.4.0 记录在文档顶部）
-

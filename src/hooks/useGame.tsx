@@ -149,6 +149,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         });
     };
 
+    // v1.4.0: 胜利后等待用户点击再显示 ResultScreen
     const endGame = (won: boolean, percent: number, timeElapsed: number, perfectLife: boolean = false) => {
         setUnlockedPercent(percent);
         audioManager.stopBGM();
@@ -157,10 +158,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
             audioManager.playVictorySFX();
             audioManager.playWowVoice();
 
-            // v1.4.0 Bug#1 修复：延迟 2.5 秒再显示 ResultScreen，让 engine 的 winAnimProgress 动画完整播放
-            setTimeout(() => {
-                setStatus('won');
-            }, 2500);
+            // v1.4.0: 不立即 setStatus，等待动画完成和用户点击
+            // 动画和用户点击由 GameCanvas 的 onWonClick 回调处理
 
             const targetTime = currentLevel.timeLimit;
             let stars = 1;
@@ -187,13 +186,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
                 const currentChapterId = currentLevel.chapterId;
                 const nextLevel = LEVELS.find(l => l.id === nextLevelId);
                 if (nextLevel && nextLevel.chapterId !== currentChapterId) {
-                    setTimeout(() => {
-                        startGame(nextLevelId);
-                    }, 2000);
+                    // 章节切换逻辑移到 onWonClick
                 }
             } else {
                 setAllLevelsPassed(true);
-                setStatus('all_passed');
             }
 
             const { achievements = {}, settings } = saveData;
@@ -207,6 +203,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
             setStatus('lost');
         }
     };
+
 
     const resetGame = () => {
         setStatus('welcome');
