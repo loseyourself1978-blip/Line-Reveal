@@ -13,11 +13,11 @@ interface GameState {
     currentLevel: LevelConfig;
     score: number;
     unlockedPercent: number;
-    gameTime: number; // Elapsed time
+    gameTime: number;
     allLevelsPassed: boolean;
     playMode: 'classic' | 'jigsaw' | 'match3';
+    engineLives: number;
 
-    // Persistence
     saveData: SaveData;
     unlockGalleryItem: (id: string) => void;
     spendFragments: (amount: number) => boolean;
@@ -26,6 +26,7 @@ interface GameState {
     updateStats: (stats: Partial<SaveData['stats']>) => void;
     unlockAchievement: (id: string) => void;
     toggleFavorite: (imagePath: string) => void;
+    setEngineLives: (lives: number) => void;
 
     startGame: (levelId: number) => void;
     endGame: (won: boolean, percent: number, timeElapsed: number, perfectLife?: boolean) => void;
@@ -49,6 +50,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const [playedBgImages, setPlayedBgImages] = useState<string[]>([]);
     const [allLevelsPassed, setAllLevelsPassed] = useState(false);
     const [playMode, setPlayMode] = useState<'classic' | 'jigsaw' | 'match3'>('classic');
+    const [engineLives, setEngineLives] = useState<number>(5);
 
     const [currentLevel, setCurrentLevel] = useState<LevelConfig>({
         ...LEVELS[0],
@@ -57,11 +59,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     const { saveData, addFragments, unlockLevel, unlockGalleryItem, spendFragments, updateSettings, setLevelStars, updateStats, toggleFavorite, unlockAchievement, setPlayedBgImages: persistPlayedImages } = usePersistence();
 
-    // Track if we've done the initial sync from persistence
     const initializedRef = useRef(false);
     const isFirstPersistRef = useRef(true);
 
-    // Sync playedBgImages from persistence on mount (once only)
     useEffect(() => {
         if (!initializedRef.current) {
             initializedRef.current = true;
@@ -69,18 +69,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
                 setPlayedBgImages(saveData.playedBgImages);
             }
         }
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, []);
 
-    // Persist playedBgImages when they change (skip first render)
     useEffect(() => {
         if (isFirstPersistRef.current) {
             isFirstPersistRef.current = false;
             return;
         }
         persistPlayedImages(playedBgImages);
-    }, [playedBgImages]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [playedBgImages]);
 
-    // Streak and Daily Check logic
     useEffect(() => {
         const today = new Date().toDateString();
         const lastPlay = saveData.stats.lastPlayDate;
@@ -90,7 +88,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
             if (lastPlay) {
                 const lastDate = new Date(lastPlay);
-                // Simple day difference
                 const diffTime = Math.abs(new Date().getTime() - lastDate.getTime());
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
@@ -113,7 +110,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
                 unlockAchievement('streak_3');
             }
         }
-    }, []); // Run only once on mount
+    }, []);
 
     const getAvailableBgImage = useCallback(() => {
         const available = BG_IMAGE_POOL.filter((img: string) => !playedBgImages.includes(img));
@@ -143,27 +140,28 @@ export function GameProvider({ children }: { children: ReactNode }) {
         setStatus('playing');
         setUnlockedPercent(0);
         setGameTime(0);
+        setEngineLives(5);
 
-        // Start BGM
         audioManager.playClassicBGM();
 
-        // Stats Update
         updateStats({
             totalPlays: (saveData.stats.totalPlays || 0) + 1
         });
     };
 
     const endGame = (won: boolean, percent: number, timeElapsed: number, perfectLife: boolean = false) => {
-        setStatus(won ? 'won' : 'lost');
         setUnlockedPercent(percent);
-
         audioManager.stopBGM();
 
         if (won) {
             audioManager.playVictorySFX();
             audioManager.playWowVoice();
 
-            // Calculate stars
+            // v1.4.0 Bug#1 修复：延迟 2.5 秒再显示 ResultScreen，让 engine 的 winAnimProgress 动画完整播放
+            setTimeout(() => {
+                setStatus('won');
+            }, 2500);
+
             const targetTime = currentLevel.timeLimit;
             let stars = 1;
             if (percent >= 0.95) stars++;
@@ -171,40 +169,33 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
             setLevelStars(currentLevelId, stars);
 
-            // Update Global Stats
             updateStats({
                 totalAreaUnlocked: (saveData.stats.totalAreaUnlocked || 0) + percent,
                 totalPlayTime: (saveData.stats.totalPlayTime || 0) + timeElapsed,
                 perfectClears: (saveData.stats.perfectClears || 0) + (percent >= 0.95 ? 1 : 0)
             });
 
-            // Reward Logic
             const fragmentsEarned = stars * 2;
             addFragments(fragmentsEarned);
 
-            // Unlock Next Level
             const nextLevelId = currentLevelId + 1;
             const nextLevelExists = LEVELS.some(l => l.id === nextLevelId);
 
             if (nextLevelExists) {
                 unlockLevel(nextLevelId);
 
-                // Automatic start next chapter logic
                 const currentChapterId = currentLevel.chapterId;
                 const nextLevel = LEVELS.find(l => l.id === nextLevelId);
                 if (nextLevel && nextLevel.chapterId !== currentChapterId) {
-                    // It was a chapter finale, wait a bit then start next chapter automatically
                     setTimeout(() => {
                         startGame(nextLevelId);
                     }, 2000);
                 }
             } else {
-                // All levels and chapters passed
                 setAllLevelsPassed(true);
                 setStatus('all_passed');
             }
 
-            // Achievements Unlocking logic
             const { achievements = {}, settings } = saveData;
             if (!achievements['first_blood']) unlockAchievement('first_blood');
             if (percent >= 0.95 && !achievements['perfect_clear']) unlockAchievement('perfect_clear');
@@ -212,6 +203,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
             if (settings.spiritSpeed === 3 && perfectLife && !achievements['untouchable']) unlockAchievement('untouchable');
 
             if (saveData.unlockedLevels.length >= 14 && !achievements['completionist']) unlockAchievement('completionist');
+        } else {
+            setStatus('lost');
         }
     };
 
@@ -222,7 +215,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
 
     const restartGame = () => {
-        // Full restart from Ch 1, Level 1
         setPlayedBgImages([]);
         setAllLevelsPassed(false);
         unlockLevel(1);
@@ -240,6 +232,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
             gameTime,
             allLevelsPassed,
             playMode,
+            engineLives,
             saveData,
             unlockGalleryItem,
             spendFragments,
@@ -248,6 +241,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
             updateStats,
             unlockAchievement,
             toggleFavorite,
+            setEngineLives,
             startGame,
             endGame,
             resetGame,
