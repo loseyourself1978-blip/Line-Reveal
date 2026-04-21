@@ -200,7 +200,7 @@ export class GameEngine {
         if (!this.canvasRef.current) return;
         const rect = this.canvasRef.current.getBoundingClientRect();
         this.targetInputPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-        // v1.4.0: 胜利后点击显示 ResultScreen
+        // 胜利后点击显示 ResultScreen
         if (this.isWon && this.showTapHint && this.onWonClick) {
             this.onWonClick();
         }
@@ -255,15 +255,15 @@ export class GameEngine {
 
     update(dt: number) {
         if (this.isWon) {
-            // v1.4.0: 迷雾消散动画（2.5 秒完成）
+            // 迷雾消散后立即显示提示（无 2.5 秒延迟）
             if (this.winAnimProgress < 1) {
-                this.winAnimProgress = Math.min(1, this.winAnimProgress + dt * 0.4);
+                this.winAnimProgress = Math.min(1, this.winAnimProgress + dt * 2); // 0.5 秒完成
                 if (this.winAnimProgress >= 1) {
-                    this.showTapHint = true;
+                    this.showTapHint = true; // 立即显示提示
                     this.hintBlinkTime = 0;
                 }
             }
-            // v1.4.0: 提示闪烁动画（0.5 秒周期）
+            // 提示闪烁动画（0.5 秒周期）
             if (this.showTapHint) {
                 this.hintBlinkTime += dt;
                 this.hintVisible = Math.sin(this.hintBlinkTime * Math.PI * 2) > 0;
@@ -436,20 +436,18 @@ export class GameEngine {
             this.ctx.closePath();
             
             if (this.isWon) {
-                // v1.4.0: 迷雾从中心圆形消散（优化性能）
+                // 迷雾从中心圆形消散（径向渐变优化性能）
                 const centerX = width / 2;
                 const centerY = height / 2;
                 const maxRadius = Math.sqrt(centerX * centerX + centerY * centerY);
                 const currentRadius = maxRadius * this.winAnimProgress;
                 
-                // 使用径向渐变优化性能
                 const gradient = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, currentRadius);
                 gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
                 gradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
                 this.ctx.fillStyle = gradient;
                 this.ctx.fill();
             } else {
-                // Normal fog rendering
                 if (this.fogDensity === 1) this.ctx.globalAlpha = 0.4;
                 else if (this.fogDensity === 2) this.ctx.globalAlpha = 0.8;
                 else this.ctx.globalAlpha = 1.0;

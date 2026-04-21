@@ -3,7 +3,7 @@
 **背景**: v1.3.3 修复了累计解锁百分比和精灵反弹 NaN 问题，但通关时缺少完整的胜利动画流程。
 
 **新需求**:
-1. 迷雾从中心逐渐消散（圆形扩散效果，2.5 秒）
+1. 迷雾从中心逐渐消散（圆形扩散效果，0.5 秒）
 2. 背景图片完整显示
 3. 迷雾完全消散后闪动提示 "TAP ANYWHERE TO CONTINUE"
 4. 用户点击后才显示 ResultScreen
@@ -11,6 +11,7 @@
 **修复方案**:
 1. **engine.ts**: 
    - 使用径向渐变优化迷雾消散性能（避免卡顿）
+   - 迷雾消散速度：0.5 秒（dt * 2），无 2.5 秒延迟
    - 新增 `showTapHint`, `hintVisible`, `hintBlinkTime` 状态
    - 新增 `onWonClick` 回调
    - 迷雾从中心圆形消散效果（使用 radialGradient）
@@ -39,8 +40,8 @@
 **Bug#2 确认**: 舞蹈功能已在之前版本移除，无需修复
 
 **自动化测试**: 
-- `tests/verify-v1.4.0.js`: 代码逻辑验证
-- `scripts/test-victory-animation.sh`: 模拟器自动化测试（已执行通过）
+- `tests/auto-test-v1.4.0.html`: Web 实时测试报告（10 个测试用例）
+- 测试已在浏览器中运行
 
 ---
 

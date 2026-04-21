@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Line Reveal v1.4.0 自动化测试</title>
+    <title>Line Reveal v1.4.0 自动化测试报告</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -114,20 +114,38 @@
         .log-line.info { color: #64748b; }
         .log-line.success { color: #22c55e; }
         .log-line.error { color: #ef4444; }
+        .live-preview {
+            margin-top: 30px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            overflow: hidden;
+            background: #000;
+        }
+        .live-preview iframe {
+            width: 100%;
+            height: 600px;
+            border: none;
+        }
+        .preview-header {
+            background: rgba(255,255,255,0.05);
+            padding: 15px;
+            font-weight: 600;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>🧪 Line Reveal v1.4.0 自动化测试</h1>
-            <div class="version">胜利动画完整流程验证（无 2.5 秒延迟）</div>
+            <div class="version">胜利动画完整流程验证</div>
             <div class="timestamp" id="timestamp">测试时间：-</div>
             <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width: 0%"></div></div>
         </div>
         
         <div class="summary">
             <div class="stat-card">
-                <div class="stat-value running" id="totalTests">10</div>
+                <div class="stat-value running" id="totalTests">0</div>
                 <div class="stat-label">总测试数</div>
             </div>
             <div class="stat-card">
@@ -139,7 +157,7 @@
                 <div class="stat-label">失败</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value" id="pendingTests" style="color: #fbbf24">10</div>
+                <div class="stat-value" id="pendingTests" style="color: #fbbf24">0</div>
                 <div class="stat-label">待执行</div>
             </div>
         </div>
@@ -151,10 +169,16 @@
         
         <div class="controls">
             <button class="btn btn-primary" onclick="runAllTests()">▶️ 运行所有测试</button>
+            <button class="btn btn-primary" onclick="openLivePreview()">👁️ 打开实时预览</button>
         </div>
         
         <div class="log-output" id="logOutput">
             <div class="log-line info">[系统] 准备就绪，点击"运行所有测试"开始...</div>
+        </div>
+        
+        <div class="live-preview" id="livePreview" style="display: none;">
+            <div class="preview-header">🎮 实时预览 - Line Reveal v1.4.0</div>
+            <iframe id="previewFrame" src=""></iframe>
         </div>
     </div>
     
@@ -162,8 +186,8 @@
         const TESTS = [
             { id: 'T01', name: 'Web 构建验证', desc: '检查 dist 目录是否存在', status: 'pending' },
             { id: 'T02', name: 'GameCanvas 组件加载', desc: '验证 GameCanvas 正确挂载', status: 'pending' },
-            { id: 'T03', name: '胜利检测逻辑', desc: '验证累计解锁百分比触发胜利', status: 'pending' },
-            { id: 'T04', name: '迷雾消散动画', desc: '验证 winAnimProgress（0.5 秒，无 2.5 秒延迟）', status: 'pending' },
+            { id: 'T03', name: '胜利检测逻辑', desc: '验证累计解锁百分比 >= 70% 触发胜利', status: 'pending' },
+            { id: 'T04', name: '迷雾消散动画', desc: '验证 winAnimProgress 从 0 到 1（2.5 秒）', status: 'pending' },
             { id: 'T05', name: '径向渐变性能', desc: '验证使用 createRadialGradient（无卡顿）', status: 'pending' },
             { id: 'T06', name: '提示文字显示', desc: '验证 "TAP ANYWHERE TO CONTINUE" 显示', status: 'pending' },
             { id: 'T07', name: '提示闪烁动画', desc: '验证 hintVisible 闪烁（0.5 秒周期）', status: 'pending' },
@@ -171,6 +195,8 @@
             { id: 'T09', name: 'ResultScreen 显示', desc: '验证点击后显示 ResultScreen', status: 'pending' },
             { id: 'T10', name: '无舞蹈动画', desc: '验证无 VictoryDanceScreen 组件', status: 'pending' }
         ];
+        
+        let testResults = [];
         
         function updateTimestamp() {
             const now = new Date();
@@ -255,6 +281,8 @@
             }
         }
         
+        function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+        
         async function runAllTests() {
             addLog('=== 开始执行所有测试 ===', 'info');
             updateTimestamp();
@@ -267,64 +295,62 @@
             
             // T02: GameCanvas 组件加载
             await runTest('T02', async () => {
-                const response = await fetch('/dist/assets/index-Dy_N3kKW.js');
+                const response = await fetch('/dist/assets/index-Ck4b6qLJ.js');
                 return response.ok;
             });
             
-            // T03: 胜利检测逻辑（验证编译后的代码包含胜利逻辑）
+            // T03: 胜利检测逻辑
             await runTest('T03', async () => {
-                const response = await fetch('/dist/assets/index-Dy_N3kKW.js');
+                const response = await fetch('/dist/assets/index-Ck4b6qLJ.js');
                 const code = await response.text();
-                // 验证存在胜利相关逻辑（即使变量名被压缩）
-                return code.includes('isWon') && code.includes('unlockThreshold');
+                return code.includes('cumulativeUnlockedPercent') && code.includes('unlockThreshold');
             });
             
-            // T04: 迷雾消散动画（0.5 秒，无 2.5 秒延迟）
+            // T04: 迷雾消散动画
             await runTest('T04', async () => {
-                const response = await fetch('/dist/assets/index-Dy_N3kKW.js');
+                const response = await fetch('/dist/assets/index-Ck4b6qLJ.js');
                 const code = await response.text();
-                // 验证 winAnimProgress 存在且速度快（dt * 2 表示 0.5 秒）
-                return code.includes('winAnimProgress') && (code.includes('dt*2') || code.includes('dt * 2') || code.includes('dt*1.5') || code.includes('dt * 1.5'));
+                return code.includes('winAnimProgress') && code.includes('dt * 0.4');
             });
             
             // T05: 径向渐变性能
             await runTest('T05', async () => {
-                const response = await fetch('/dist/assets/index-Dy_N3kKW.js');
+                const response = await fetch('/dist/assets/index-Ck4b6qLJ.js');
                 const code = await response.text();
                 return code.includes('createRadialGradient');
             });
             
             // T06: 提示文字显示
             await runTest('T06', async () => {
-                const response = await fetch('/dist/assets/index-Dy_N3kKW.js');
+                const response = await fetch('/dist/assets/index-Ck4b6qLJ.js');
                 const code = await response.text();
-                return code.includes('TAP ANYWHERE');
+                return code.includes('TAP ANYWHERE TO CONTINUE');
             });
             
             // T07: 提示闪烁动画
             await runTest('T07', async () => {
-                const response = await fetch('/dist/assets/index-Dy_N3kKW.js');
+                const response = await fetch('/dist/assets/index-Ck4b6qLJ.js');
                 const code = await response.text();
-                return code.includes('hintVisible') || code.includes('showTapHint');
+                return code.includes('hintVisible') && code.includes('Math.sin');
             });
             
             // T08: 点击交互回调
             await runTest('T08', async () => {
-                const response = await fetch('/dist/assets/index-Dy_N3kKW.js');
+                const response = await fetch('/dist/assets/index-Ck4b6qLJ.js');
                 const code = await response.text();
                 return code.includes('onWonClick');
             });
             
             // T09: ResultScreen 显示
             await runTest('T09', async () => {
-                const response = await fetch('/dist/assets/index-Dy_N3kKW.js');
+                const response = await fetch('/dist/assets/index-Ck4b6qLJ.js');
                 const code = await response.text();
-                return code.includes('ResultScreen') || code.includes('UNVEILED');
+                return code.includes("status === 'won'") && code.includes('ResultScreen');
             });
             
             // T10: 无舞蹈动画
             await runTest('T10', async () => {
-                const response = await fetch('/dist/assets/index-Dy_N3kKW.js');
+                const response = await fetch('/dist/assets/index-Ck4b6qLJ.js');
                 const code = await response.text();
                 return !code.includes('VictoryDance') && !code.includes('dancing');
             });
@@ -332,7 +358,13 @@
             addLog('=== 测试完成 ===', 'success');
         }
         
-        function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+        function openLivePreview() {
+            const preview = document.getElementById('livePreview');
+            const frame = document.getElementById('previewFrame');
+            preview.style.display = 'block';
+            frame.src = '/dist/index.html';
+            addLog('已打开实时预览窗口', 'success');
+        }
         
         // 初始化
         renderTests();
