@@ -28,7 +28,6 @@ export class GameEngine {
     private spirits: Spirit[] = [];
     private bigSpirit: BigSpirit | null = null;
     public isWon = false;
-    public winAnimProgress = 0;
     public showTapHint = false;
     public hintVisible = true;
     public hintBlinkTime = 0;
@@ -67,7 +66,6 @@ export class GameEngine {
         this.totalArea = 0;
         this.unlockedPolygons = [];
         this.isWon = false;
-        this.winAnimProgress = 0;
         this.showTapHint = false;
         this.hintVisible = true;
         this.hintBlinkTime = 0;
@@ -255,19 +253,14 @@ export class GameEngine {
 
     update(dt: number) {
         if (this.isWon) {
-            // 迷雾消散后立即显示提示（无 2.5 秒延迟）
-            if (this.winAnimProgress < 1) {
-                this.winAnimProgress = Math.min(1, this.winAnimProgress + dt * 2); // 0.5 秒完成
-                if (this.winAnimProgress >= 1) {
-                    this.showTapHint = true; // 立即显示提示
-                    this.hintBlinkTime = 0;
-                }
+            // 胜利后直接显示提示（无时间延迟）
+            if (!this.showTapHint) {
+                this.showTapHint = true; // 立即显示提示
+                this.hintBlinkTime = 0;
             }
             // 提示闪烁动画（0.5 秒周期）
-            if (this.showTapHint) {
-                this.hintBlinkTime += dt;
-                this.hintVisible = Math.sin(this.hintBlinkTime * Math.PI * 2) > 0;
-            }
+            this.hintBlinkTime += dt;
+            this.hintVisible = Math.sin(this.hintBlinkTime * Math.PI * 2) > 0;
             this.render();
             return;
         }
@@ -425,8 +418,8 @@ export class GameEngine {
             this.ctx.drawImage(this.bgImage, x, y, this.bgImage.width * scale, this.bgImage.height * scale);
         }
         
-        // 2. 绘制迷雾
-        if (this.activePolygon.length > 0) {
+        // 2. 绘制迷雾（仅在未胜利时绘制）
+        if (!this.isWon && this.activePolygon.length > 0) {
             this.ctx.save();
             this.ctx.beginPath();
             this.ctx.moveTo(this.activePolygon[0].x, this.activePolygon[0].y);
@@ -435,25 +428,11 @@ export class GameEngine {
             }
             this.ctx.closePath();
             
-            if (this.isWon) {
-                // 迷雾从中心圆形消散（径向渐变优化性能）
-                const centerX = width / 2;
-                const centerY = height / 2;
-                const maxRadius = Math.sqrt(centerX * centerX + centerY * centerY);
-                const currentRadius = maxRadius * this.winAnimProgress;
-                
-                const gradient = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, currentRadius);
-                gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-                gradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
-                this.ctx.fillStyle = gradient;
-                this.ctx.fill();
-            } else {
-                if (this.fogDensity === 1) this.ctx.globalAlpha = 0.4;
-                else if (this.fogDensity === 2) this.ctx.globalAlpha = 0.8;
-                else this.ctx.globalAlpha = 1.0;
-                this.ctx.fillStyle = '#000000';
-                this.ctx.fill();
-            }
+            if (this.fogDensity === 1) this.ctx.globalAlpha = 0.4;
+            else if (this.fogDensity === 2) this.ctx.globalAlpha = 0.8;
+            else this.ctx.globalAlpha = 1.0;
+            this.ctx.fillStyle = '#000000';
+            this.ctx.fill();
             this.ctx.restore();
         }
         
