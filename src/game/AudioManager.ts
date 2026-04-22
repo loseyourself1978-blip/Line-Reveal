@@ -110,11 +110,14 @@ export class AudioManager {
 
     public playWowVoice() {
         const getUrl = (s: string) => new URL(s, window.location.origin).href;
-        // v1.4.2: 使用 sfx_victory.mp3 作为 wow 语音效果
-        const wow = new Audio(getUrl('/assets/sfx_victory.mp3'));
+        // v1.4.2+: 尝试播放 sfx_wow.mp3，如果不存在则使用 sfx_victory.mp3
+        const wow = new Audio(getUrl('/assets/sfx_wow.mp3'));
         wow.volume = 0.8;
         wow.play().catch(() => {
-            console.warn('sfx_victory.mp3 play failed');
+            // Fallback to victory SFX if wow not found
+            const victory = new Audio(getUrl('/assets/sfx_victory.mp3'));
+            victory.volume = 0.8;
+            victory.play().catch(() => {});
         });
     }
 
