@@ -1,3 +1,45 @@
+### v1.4.1: 蜘蛛精灵可见性修复 + Chapter 3-4 完善
+
+**背景**: v1.4.0 完成后，发现以下问题：
+1. 蜘蛛（spider）精灵使用纯黑色 `#000000`，在黑色迷雾背景上完全不可见
+2. Chapter 3-4 的 14 关为占位符，内容重复且难度不合理
+
+**修复方案**:
+1. **entities.ts**:
+   - 将蜘蛛精灵颜色从 `#000000` 改为 `#1a1a2e`（深紫灰色）
+   - 确保在黑色背景上可见
+
+2. **levels.ts**:
+   - Chapter 3 (Landscape Art) 设计 7 关：
+     - 3-1: Mountain Path - 5蝴蝶
+     - 3-2: Forest Edge - 7蜘蛛
+     - 3-3: Desert Storm - 5蝎子
+     - 3-4: Ocean Waves - 7蝴蝶+2蜘蛛
+     - 3-5: Sunset Valley - 4蝎子+3蝴蝶
+     - 3-6: Storm Approaching - 6蜘蛛+3蝎子
+     - 3-7: Landscape Master - 5蝴蝶+4蜘蛛+3蝎子
+   - Chapter 4 (Modern Art) 设计 7 关：
+     - 4-1: Abstract Beginnings - 6蝴蝶
+     - 4-2: Geometric Chaos - 8蜘蛛
+     - 4-3: Neon Nights - 6蝎子
+     - 4-4: Digital Dreams - 8蝴蝶+4蜘蛛
+     - 4-5: Color Splash - 5蝎子+6蝴蝶
+     - 4-6: Modern Masterpiece - 6蜘蛛+4蝎子+4蝴蝶
+     - 4-7: Ultimate Art - 8蝴蝶+6蜘蛛+5蝎子
+   - 更新难度递增：unlockThreshold 0.82→0.95，perfectThreshold 0.94→0.99
+
+**改动文件**:
+| 文件 | 改动 |
+|------|------|
+| `src/game/entities.ts` | 蜘蛛精灵颜色修复 |
+| `src/data/levels.ts` | Chapter 3-4 14关正式设计 |
+
+**验收**:
+- ✅ 构建通过
+- 待：模拟器验证
+
+---
+
 ### v1.4.0 (Final): 胜利动画完整交互流程（性能优化版）
 
 **背景**: v1.3.3 修复了累计解锁百分比和精灵反弹 NaN 问题，但通关时缺少完整的胜利动画流程。

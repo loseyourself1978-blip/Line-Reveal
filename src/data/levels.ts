@@ -25,10 +25,10 @@ export interface Chapter {
 }
 
 export const CHAPTERS: Chapter[] = [
-    { id: 1, title: 'Chapter 1: Minimal Art', description: 'Simple shapes and shadows.', icon: '/assets/images/chapters/icons/ch1.png', category: 'Minimal' },
-    { id: 2, title: 'Chapter 2: Portrait Art', description: 'Focus on characters and faces.', icon: '/assets/images/chapters/icons/ch2.png', category: 'Portrait' },
-    { id: 3, title: 'Chapter 3: Landscape Art', description: 'Vast environments to explore.', icon: '/assets/images/chapters/icons/ch3.png', category: 'Landscape' },
-    { id: 4, title: 'Chapter 4: Modern Art', description: 'Complex and abstract aesthetics.', icon: '/assets/images/chapters/icons/ch4.png', category: 'Modern' },
+    { id: 1, title: 'Chapter 1: Minimal Art', description: 'Simple shapes and shadows. Perfect for beginners.', icon: '/assets/images/chapters/icons/ch1.png', category: 'Minimal' },
+    { id: 2, title: 'Chapter 2: Portrait Art', description: 'Focus on characters and faces. Intermediate challenge.', icon: '/assets/images/chapters/icons/ch2.png', category: 'Portrait' },
+    { id: 3, title: 'Chapter 3: Landscape Art', description: 'Vast environments to explore. Advanced terrain.', icon: '/assets/images/chapters/icons/ch3.png', category: 'Landscape' },
+    { id: 4, title: 'Chapter 4: Modern Art', description: 'Complex and abstract aesthetics. Expert only.', icon: '/assets/images/chapters/icons/ch4.png', category: 'Modern' },
 ];
 
 // Pool of all available background images
@@ -83,16 +83,21 @@ export const LEVELS: LevelConfig[] = [
     { id: 15, chapterId: 2, title: "2-7: Swarm Attack", description: "8 butterflies at once.", bgImage: '', timeLimit: 200, spirits: [{ type: 'butterfly', count: 8, speed: 140 }], unlockThreshold: 0.88, perfectThreshold: 0.96 },
     { id: 16, chapterId: 2, title: "2-8: Master Class", description: "The ultimate selection.", bgImage: '', timeLimit: 240, spirits: [{ type: 'spider', count: 4, speed: 180 }, { type: 'scorpion', count: 3, speed: 210 }, { type: 'butterfly', count: 2, speed: 190 }], unlockThreshold: 0.9, perfectThreshold: 0.97 },
 
-    // Placeholder for other chapters (Chapter 3 & 4)
-    ...Array.from({ length: 14 }, (_, i) => ({
-        id: 17 + i,
-        chapterId: i < 7 ? 3 : 4,
-        title: `${i < 7 ? '3' : '4'}-${(i % 7) + 1}: Art Advance`,
-        description: "Reserved for future beauty.",
-        bgImage: '',
-        timeLimit: 180,
-        spirits: [{ type: 'butterfly' as SpiritType, count: 5 + i % 3, speed: 150 + i * 5 }],
-        unlockThreshold: 0.85,
-        perfectThreshold: 0.95
-    }))
+    // CHAPTER 3: Landscape Art (Levels 17-23)
+    { id: 17, chapterId: 3, title: "3-1: Mountain Path", description: "Navigate through the peaks.", bgImage: '', timeLimit: 120, spirits: [{ type: 'butterfly', count: 5, speed: 160 }], unlockThreshold: 0.82, perfectThreshold: 0.94 },
+    { id: 18, chapterId: 3, title: "3-2: Forest Edge", description: "Spiders guard the woods.", bgImage: '', timeLimit: 120, spirits: [{ type: 'spider', count: 7, speed: 130 }], unlockThreshold: 0.82, perfectThreshold: 0.94 },
+    { id: 19, chapterId: 3, title: "3-3: Desert Storm", description: "Scorpions rule the dunes.", bgImage: '', timeLimit: 150, spirits: [{ type: 'scorpion', count: 5, speed: 200 }], unlockThreshold: 0.84, perfectThreshold: 0.95 },
+    { id: 20, chapterId: 3, title: "3-4: Ocean Waves", description: "Butterflies in the breeze.", bgImage: '', timeLimit: 150, spirits: [{ type: 'butterfly', count: 7, speed: 180 }, { type: 'spider', count: 2, speed: 140 }], unlockThreshold: 0.85, perfectThreshold: 0.95 },
+    { id: 21, chapterId: 3, title: "3-5: Sunset Valley", description: "A peaceful yet challenging scene.", bgImage: '', timeLimit: 180, spirits: [{ type: 'scorpion', count: 4, speed: 210 }, { type: 'butterfly', count: 3, speed: 170 }], unlockThreshold: 0.87, perfectThreshold: 0.96 },
+    { id: 22, chapterId: 3, title: "3-6: Storm Approaching", description: "Chaos in the wilderness.", bgImage: '', timeLimit: 200, spirits: [{ type: 'spider', count: 6, speed: 160 }, { type: 'scorpion', count: 3, speed: 220 }], unlockThreshold: 0.88, perfectThreshold: 0.96 },
+    { id: 23, chapterId: 3, title: "3-7: Landscape Master", description: "The ultimate nature challenge.", bgImage: '', timeLimit: 240, spirits: [{ type: 'butterfly', count: 5, speed: 190 }, { type: 'spider', count: 4, speed: 170 }, { type: 'scorpion', count: 3, speed: 230 }], unlockThreshold: 0.9, perfectThreshold: 0.97 },
+
+    // CHAPTER 4: Modern Art (Levels 24-30)
+    { id: 24, chapterId: 4, title: "4-1: Abstract Beginnings", description: "Simple shapes, complex logic.", bgImage: '', timeLimit: 150, spirits: [{ type: 'butterfly', count: 6, speed: 170 }], unlockThreshold: 0.85, perfectThreshold: 0.95 },
+    { id: 25, chapterId: 4, title: "4-2: Geometric Chaos", description: "Patterns everywhere.", bgImage: '', timeLimit: 150, spirits: [{ type: 'spider', count: 8, speed: 150 }], unlockThreshold: 0.86, perfectThreshold: 0.95 },
+    { id: 26, chapterId: 4, title: "4-3: Neon Nights", description: "Fast scorpions in the city.", bgImage: '', timeLimit: 180, spirits: [{ type: 'scorpion', count: 6, speed: 240 }], unlockThreshold: 0.87, perfectThreshold: 0.96 },
+    { id: 27, chapterId: 4, title: "4-4: Digital Dreams", description: "A mix of worlds.", bgImage: '', timeLimit: 180, spirits: [{ type: 'butterfly', count: 8, speed: 200 }, { type: 'spider', count: 4, speed: 160 }], unlockThreshold: 0.88, perfectThreshold: 0.96 },
+    { id: 28, chapterId: 4, title: "4-5: Color Splash", description: "Vibrant and intense.", bgImage: '', timeLimit: 200, spirits: [{ type: 'scorpion', count: 5, speed: 250 }, { type: 'butterfly', count: 6, speed: 190 }], unlockThreshold: 0.9, perfectThreshold: 0.97 },
+    { id: 29, chapterId: 4, title: "4-6: Modern Masterpiece", description: "The art of precision.", bgImage: '', timeLimit: 240, spirits: [{ type: 'spider', count: 6, speed: 180 }, { type: 'scorpion', count: 4, speed: 260 }, { type: 'butterfly', count: 4, speed: 210 }], unlockThreshold: 0.92, perfectThreshold: 0.98 },
+    { id: 30, chapterId: 4, title: "4-7: Ultimate Art", description: "The final challenge.", bgImage: '', timeLimit: 300, spirits: [{ type: 'butterfly', count: 8, speed: 220 }, { type: 'spider', count: 6, speed: 190 }, { type: 'scorpion', count: 5, speed: 270 }], unlockThreshold: 0.95, perfectThreshold: 0.99 }
 ];

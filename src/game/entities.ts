@@ -108,7 +108,7 @@ export class SmallSpirit extends Spirit {
 
         switch (type) {
             case 'spider':
-                this.color = '#000000';
+                this.color = '#1a1a2e'; // Dark purple-gray, visible on black background
                 // this.loadImage('/assets/spirit_spider.png'); // Pending actual asset name
                 break;
             case 'scorpion':
