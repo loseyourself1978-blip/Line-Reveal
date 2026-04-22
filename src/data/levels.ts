@@ -21,7 +21,7 @@ export interface Chapter {
     title: string;
     description: string;
     icon: string;
-    category: 'Minimal' | 'Portrait' | 'Landscape' | 'Modern';
+    category: 'Minimal' | 'Portrait' | 'Landscape' | 'Modern' | 'Challenge' | 'Endless';
 }
 
 export const CHAPTERS: Chapter[] = [
@@ -29,6 +29,8 @@ export const CHAPTERS: Chapter[] = [
     { id: 2, title: 'Chapter 2: Portrait Art', description: 'Focus on characters and faces. Intermediate challenge.', icon: '/assets/images/chapters/icons/ch2.png', category: 'Portrait' },
     { id: 3, title: 'Chapter 3: Landscape Art', description: 'Vast environments to explore. Advanced terrain.', icon: '/assets/images/chapters/icons/ch3.png', category: 'Landscape' },
     { id: 4, title: 'Chapter 4: Modern Art', description: 'Complex and abstract aesthetics. Expert only.', icon: '/assets/images/chapters/icons/ch4.png', category: 'Modern' },
+    { id: 5, title: 'Chapter 5: Challenge Mode', description: 'Speed and precision. Master challenges.', icon: '/assets/images/chapters/icons/ch5.png', category: 'Challenge' },
+    { id: 6, title: 'Chapter 6: Endless Mode', description: 'The ultimate test. How far can you go?', icon: '/assets/images/chapters/icons/ch6.png', category: 'Endless' },
 ];
 
 // Pool of all available background images
@@ -99,5 +101,19 @@ export const LEVELS: LevelConfig[] = [
     { id: 27, chapterId: 4, title: "4-4: Digital Dreams", description: "A mix of worlds.", bgImage: '', timeLimit: 180, spirits: [{ type: 'butterfly', count: 8, speed: 200 }, { type: 'spider', count: 4, speed: 160 }], unlockThreshold: 0.88, perfectThreshold: 0.96 },
     { id: 28, chapterId: 4, title: "4-5: Color Splash", description: "Vibrant and intense.", bgImage: '', timeLimit: 200, spirits: [{ type: 'scorpion', count: 5, speed: 250 }, { type: 'butterfly', count: 6, speed: 190 }], unlockThreshold: 0.9, perfectThreshold: 0.97 },
     { id: 29, chapterId: 4, title: "4-6: Modern Masterpiece", description: "The art of precision.", bgImage: '', timeLimit: 240, spirits: [{ type: 'spider', count: 6, speed: 180 }, { type: 'scorpion', count: 4, speed: 260 }, { type: 'butterfly', count: 4, speed: 210 }], unlockThreshold: 0.92, perfectThreshold: 0.98 },
-    { id: 30, chapterId: 4, title: "4-7: Ultimate Art", description: "The final challenge.", bgImage: '', timeLimit: 300, spirits: [{ type: 'butterfly', count: 8, speed: 220 }, { type: 'spider', count: 6, speed: 190 }, { type: 'scorpion', count: 5, speed: 270 }], unlockThreshold: 0.95, perfectThreshold: 0.99 }
+    { id: 30, chapterId: 4, title: "4-7: Ultimate Art", description: "The final challenge.", bgImage: '', timeLimit: 300, spirits: [{ type: 'butterfly', count: 8, speed: 220 }, { type: 'spider', count: 6, speed: 190 }, { type: 'scorpion', count: 5, speed: 270 }], unlockThreshold: 0.95, perfectThreshold: 0.99 },
+
+    // CHAPTER 5: Challenge Mode (Levels 31-35)
+    { id: 31, chapterId: 5, title: "5-1: Speed Trial", description: "Fast spirits, steady hands.", bgImage: '', timeLimit: 60, spirits: [{ type: 'butterfly', count: 10, speed: 280 }], unlockThreshold: 0.88, perfectThreshold: 0.96 },
+    { id: 32, chapterId: 5, title: "5-2: Web Masters", description: "Spiders everywhere.", bgImage: '', timeLimit: 90, spirits: [{ type: 'spider', count: 12, speed: 200 }], unlockThreshold: 0.90, perfectThreshold: 0.97 },
+    { id: 33, chapterId: 5, title: "5-3: Deadly Dance", description: "Scorpion swarm.", bgImage: '', timeLimit: 120, spirits: [{ type: 'scorpion', count: 10, speed: 300 }], unlockThreshold: 0.92, perfectThreshold: 0.98 },
+    { id: 34, chapterId: 5, title: "5-4: Chaos Theory", description: "All spirits united.", bgImage: '', timeLimit: 150, spirits: [{ type: 'butterfly', count: 6, speed: 240 }, { type: 'spider', count: 6, speed: 200 }, { type: 'scorpion', count: 6, speed: 280 }], unlockThreshold: 0.94, perfectThreshold: 0.98 },
+    { id: 35, chapterId: 5, title: "5-5: True Master", description: "The ultimate test.", bgImage: '', timeLimit: 180, spirits: [{ type: 'butterfly', count: 8, speed: 260 }, { type: 'spider', count: 8, speed: 220 }, { type: 'scorpion', count: 8, speed: 320 }], unlockThreshold: 0.96, perfectThreshold: 0.99 },
+
+    // CHAPTER 6: Endless Mode (Levels 36-40)
+    { id: 36, chapterId: 6, title: "6-1: Endless Beginnings", description: "How far can you go?", bgImage: '', timeLimit: 200, spirits: [{ type: 'butterfly', count: 10, speed: 280 }], unlockThreshold: 0.90, perfectThreshold: 0.97 },
+    { id: 37, chapterId: 6, title: "6-2: Web of Doom", description: "Spiders never rest.", bgImage: '', timeLimit: 200, spirits: [{ type: 'spider', count: 14, speed: 240 }], unlockThreshold: 0.92, perfectThreshold: 0.98 },
+    { id: 38, chapterId: 6, title: "6-3: Scorpion Storm", description: "Speed is key.", bgImage: '', timeLimit: 200, spirits: [{ type: 'scorpion', count: 12, speed: 340 }], unlockThreshold: 0.94, perfectThreshold: 0.98 },
+    { id: 39, chapterId: 6, title: "6-4: Perfect Storm", description: "Everything at once.", bgImage: '', timeLimit: 240, spirits: [{ type: 'butterfly', count: 8, speed: 280 }, { type: 'spider', count: 8, speed: 240 }, { type: 'scorpion', count: 8, speed: 340 }], unlockThreshold: 0.96, perfectThreshold: 0.99 },
+    { id: 40, chapterId: 6, title: "6-5: Legend", description: "You are the legend.", bgImage: '', timeLimit: 300, spirits: [{ type: 'butterfly', count: 10, speed: 300 }, { type: 'spider', count: 10, speed: 260 }, { type: 'scorpion', count: 10, speed: 360 }], unlockThreshold: 0.98, perfectThreshold: 1.0 }
 ];
