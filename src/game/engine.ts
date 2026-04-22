@@ -263,10 +263,10 @@ export class GameEngine {
         if (this.isWon) {
             // v1.4.2: 迷雾消散动画 (0.5 秒从中心扩散)
             if (this.winAnimProgress < 1) {
-                this.winAnimProgress = Math.min(1, this.winAnimProgress + dt * 2); // 0.5 秒完成
+                this.winAnimProgress = Math.min(1, this.winAnimProgress + dt * 2);
             }
             // 迷雾消散完成后显示提示
-            if (this.winAnimProgress >= 1 && !this.showTapHint) {
+            if (this.winAnimProgress >= 0.8 && !this.showTapHint) {
                 this.showTapHint = true;
                 this.hintBlinkTime = 0;
             }
@@ -424,9 +424,9 @@ export class GameEngine {
         const { width, height } = this.canvasRef.current;
         this.ctx.clearRect(0, 0, width, height);
         
-        // 1. 绘制背景图片
+        // 1. 绘制背景图片（保持纵横比，完全展示在屏幕内）
         if (this.bgImage && this.bgImage.complete) {
-            const scale = Math.max(width / this.bgImage.width, height / this.bgImage.width);
+            const scale = Math.min(width / this.bgImage.width, height / this.bgImage.height);
             const imgW = this.bgImage.width * scale;
             const imgH = this.bgImage.height * scale;
             const x = width / 2 - imgW / 2;
@@ -434,19 +434,22 @@ export class GameEngine {
             this.ctx.drawImage(this.bgImage, x, y, imgW, imgH);
         }
         
-        // 2. 绘制迷雾
+        // 2. 绘制迷雾（胜利时渐变消散）
         if (this.isWon) {
-            // v1.4.2: 胜利后迷雾从中心消散动画
-            if (this.winAnimProgress < 1 && this.activePolygon.length > 0) {
+            // v1.4.2: 迷雾渐变消散动画 - 覆盖整个屏幕
+            const fogAlpha = Math.max(0, 1 - this.winAnimProgress);
+            if (fogAlpha > 0) {
                 this.ctx.save();
+                this.ctx.globalAlpha = fogAlpha;
+                
+                // 使用径向渐变从中心消散
                 const centerX = width / 2;
                 const centerY = height / 2;
-                const maxRadius = Math.sqrt(width * width + height * height) / 2;
+                const maxRadius = Math.sqrt(width * width + height * height);
                 
-                // 径向渐变：中心透明 -> 边缘黑色
                 const gradient = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, maxRadius);
-                gradient.addColorStop(Math.max(0, this.winAnimProgress - 0.01), 'rgba(0, 0, 0, 0)');
-                gradient.addColorStop(this.winAnimProgress, 'rgba(0, 0, 0, 0.8)');
+                gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+                gradient.addColorStop(Math.min(1, this.winAnimProgress + 0.1), 'rgba(0, 0, 0, 0.5)');
                 gradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
                 
                 this.ctx.fillStyle = gradient;
@@ -455,7 +458,7 @@ export class GameEngine {
             }
             
             // 迷雾消散后显示提示
-            if (this.showTapHint && this.hintVisible) {
+            if (this.winAnimProgress >= 0.8 && this.showTapHint && this.hintVisible) {
                 this.ctx.save();
                 this.ctx.globalAlpha = 1;
                 this.ctx.fillStyle = '#ffffff';
