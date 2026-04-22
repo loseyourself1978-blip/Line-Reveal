@@ -261,12 +261,12 @@ export class GameEngine {
 
     update(dt: number) {
         if (this.isWon) {
-            // v1.4.2: 迷雾消散动画 (0.5 秒从中心扩散)
+            // v1.4.2: 迷雾消散动画 (3 秒从中心扩散)
             if (this.winAnimProgress < 1) {
-                this.winAnimProgress = Math.min(1, this.winAnimProgress + dt * 2);
+                this.winAnimProgress = Math.min(1, this.winAnimProgress + dt * 0.33); // 3 秒完成
             }
-            // 迷雾消散完成后显示提示
-            if (this.winAnimProgress >= 0.8 && !this.showTapHint) {
+            // 迷雾消散完成后显示提示 (50% 时开始显示)
+            if (this.winAnimProgress >= 0.5 && !this.showTapHint) {
                 this.showTapHint = true;
                 this.hintBlinkTime = 0;
             }
@@ -457,8 +457,8 @@ export class GameEngine {
                 this.ctx.restore();
             }
             
-            // 迷雾消散后显示提示
-            if (this.winAnimProgress >= 0.8 && this.showTapHint && this.hintVisible) {
+            // 迷雾消散后显示提示 (50% 后显示)
+            if (this.winAnimProgress >= 0.5 && this.showTapHint && this.hintVisible) {
                 this.ctx.save();
                 this.ctx.globalAlpha = 1;
                 this.ctx.fillStyle = '#ffffff';
