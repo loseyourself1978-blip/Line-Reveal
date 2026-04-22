@@ -1,39 +1,38 @@
-### v1.4.2: 恢复通关迷雾消散动画 + 更新 App Icon
+### v1.5.0: 新关卡扩展 + 文档完善
 
-**背景**: 用户反馈 v1.4.1 版本中，通关后动画效果消失，直接跳转到下一关。
+**新增内容**:
+1. **levels.ts**:
+   - Chapter 5: Challenge Mode (31-35)
+   - Chapter 6: Endless Mode (36-40)
+   - 共 10 个新关卡
+   - 更新难度配置
 
-**修复方案**:
-1. **engine.ts**:
-   - 添加 `winAnimProgress` 变量追踪消散进度
-   - 添加 `wowPlayed` 标志控制语音播放
-   - 迷雾消散动画（3秒）：最后一块区域迷雾从全黑逐渐消散显现
-   - 播放 sfx_victory.mp3 作为 wow 语音
-
-2. **AudioManager.ts**:
-   - playWowVoice() 使用 sfx_victory.mp3 作为胜利语音
-
-3. **App Icon**:
-   - 更新 iOS App Icon 为新 icon.png
+2. **文档**:
+   - APP_STORE_PREP.md: App Store 审核材料清单
+   - ITERATION_PLAN.md: 迭代计划
 
 **改动文件**:
 | 文件 | 改动 |
 |------|------|
-| `src/game/engine.ts` | 添加 winAnimProgress + 迷雾消散动画 |
-| `src/game/AudioManager.ts` | 使用 sfx_victory.mp3 作为 wow |
-| `ios/App/.../AppIcon-512@2x.png` | 更新 App Icon |
+| `src/data/levels.ts` | 添加 Chapter 5-6 |
+| `APP_STORE_PREP.md` | 新增 |
+| `ITERATION_PLAN.md` | 新增 |
 
-**动画流程**:
-1. 通关检测 → 播放 wow 语音
-2. 最后一块区域迷雾从全黑逐渐消散显现（3秒）
-3. 显示闪烁提示 "TAP ANYWHERE TO CONTINUE"
-4. 用户点击 → 显示 ResultScreen
+---
+
+### v1.4.2: 恢复通关迷雾消散动画 + 更新 App Icon
+
+**修复方案**:
+1. **engine.ts**: 迷雾消散动画（3秒）
+2. **AudioManager.ts**: wow 语音
+3. **App Icon**: 1024x1024 PNG
 
 **验收**:
 - ✅ 构建通过
 - ✅ 模拟器验证通过
 - ✅ 迷雾消散动画正常
 - ✅ wow 音效正常
-- ✅ App Icon 已更新
+- ⚠️ App Icon (需用户确认)
 
 ---
 
