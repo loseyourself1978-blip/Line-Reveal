@@ -1,30 +1,39 @@
-### v1.4.2: 恢复通关迷雾消散动画
+### v1.4.2: 恢复通关迷雾消散动画 + 更新 App Icon
 
 **背景**: 用户反馈 v1.4.1 版本中，通关后动画效果消失，直接跳转到下一关。
-
-**问题**: 胜利后缺少迷雾从中心逐渐消散的动画效果。
 
 **修复方案**:
 1. **engine.ts**:
    - 添加 `winAnimProgress` 变量追踪消散进度
-   - update() 中添加迷雾消散动画逻辑（0.5秒完成）
-   - render() 中使用径向渐变绘制消散效果
-   - 迷雾完全消散后才显示 "TAP ANYWHERE TO CONTINUE" 提示
+   - 添加 `wowPlayed` 标志控制语音播放
+   - 迷雾消散动画（3秒）：最后一块区域迷雾从全黑逐渐消散显现
+   - 播放 sfx_victory.mp3 作为 wow 语音
+
+2. **AudioManager.ts**:
+   - playWowVoice() 使用 sfx_victory.mp3 作为胜利语音
+
+3. **App Icon**:
+   - 更新 iOS App Icon 为新 icon.png
 
 **改动文件**:
 | 文件 | 改动 |
 |------|------|
 | `src/game/engine.ts` | 添加 winAnimProgress + 迷雾消散动画 |
+| `src/game/AudioManager.ts` | 使用 sfx_victory.mp3 作为 wow |
+| `ios/App/.../AppIcon-512@2x.png` | 更新 App Icon |
 
 **动画流程**:
-1. 通关检测 → 迷雾从中心圆形扩散消散（0.5秒）
-2. 背景图片完整显示
+1. 通关检测 → 播放 wow 语音
+2. 最后一块区域迷雾从全黑逐渐消散显现（3秒）
 3. 显示闪烁提示 "TAP ANYWHERE TO CONTINUE"
 4. 用户点击 → 显示 ResultScreen
 
 **验收**:
 - ✅ 构建通过
-- ✅ 模拟器运行中
+- ✅ 模拟器验证通过
+- ✅ 迷雾消散动画正常
+- ✅ wow 音效正常
+- ✅ App Icon 已更新
 
 ---
 
