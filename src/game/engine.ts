@@ -436,7 +436,7 @@ export class GameEngine {
             this.ctx.drawImage(this.bgImage, x, y, imgW, imgH);
         }
         
-        // 2. 胜利动画：已解锁区域逐渐显现
+        // 2. 胜利动画：迷雾从中心圆形扩散消散
         if (this.isWon) {
             // v1.4.2: 播放 wow 语音
             if (!this.wowPlayed) {
@@ -444,34 +444,31 @@ export class GameEngine {
                 audioManager.playWowVoice();
             }
             
-            // 绘制已解锁区域（逐渐显现）
-            if (this.unlockedPolygons.length > 0) {
+            // 剩余迷雾从中心消散（activePolygon 区域）
+            if (this.activePolygon.length > 0 && this.winAnimProgress < 1) {
                 this.ctx.save();
-                this.ctx.globalAlpha = this.winAnimProgress; // 逐渐显现
-                this.ctx.fillStyle = '#000000';
-                this.ctx.globalCompositeOperation = 'source-over';
                 
-                // 绘制所有已解锁区域（用黑色遮罩）
-                for (const poly of this.unlockedPolygons) {
-                    if (poly.length > 0) {
-                        this.ctx.beginPath();
-                        this.ctx.moveTo(poly[0].x, poly[0].y);
-                        for (let i = 1; i < poly.length; i++) {
-                            this.ctx.lineTo(poly[i].x, poly[i].y);
-                        }
-                        this.ctx.closePath();
-                        this.ctx.fill();
-                    }
+                // 计算中心点（使用 activePolygon 的中心）
+                let centerX = 0, centerY = 0;
+                for (const p of this.activePolygon) {
+                    centerX += p.x;
+                    centerY += p.y;
                 }
-                this.ctx.restore();
-            }
-            
-            // 绘制剩余未解锁区域（逐渐消散）
-            if (this.activePolygon.length > 0) {
-                const fogAlpha = Math.max(0, 1 - this.winAnimProgress);
-                this.ctx.save();
-                this.ctx.globalAlpha = fogAlpha;
-                this.ctx.fillStyle = '#000000';
+                centerX /= this.activePolygon.length;
+                centerY /= this.activePolygon.length;
+                
+                // 迷雾消散半径从 0 扩大到覆盖整个 activePolygon
+                const maxRadius = Math.sqrt(width * width + height * height);
+                const currentRadius = maxRadius * this.winAnimProgress;
+                
+                // 径向渐变：中心透明 -> 边缘黑色
+                const gradient = this.ctx.createRadialGradient(centerX, centerY, currentRadius, centerX, centerY, maxRadius);
+                gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+                gradient.addColorStop(0.3, 'rgba(0, 0, 0, 0.3)');
+                gradient.addColorStop(0.7, 'rgba(0, 0, 0, 0.7)');
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
+                
+                this.ctx.fillStyle = gradient;
                 this.ctx.beginPath();
                 this.ctx.moveTo(this.activePolygon[0].x, this.activePolygon[0].y);
                 for (let i = 1; i < this.activePolygon.length; i++) {
