@@ -32,6 +32,7 @@ export class GameEngine {
     public showTapHint = false;
     public hintVisible = true;
     public hintBlinkTime = 0;
+    public wowPlayed = false; // v1.4.2: wow 语音是否已播放
     public onWonClick: (() => void) | null = null;
     public lastUnlockPercent = 0;
     public cumulativeUnlockedPercent = 0;
@@ -71,6 +72,7 @@ export class GameEngine {
         this.showTapHint = false;
         this.hintVisible = true;
         this.hintBlinkTime = 0;
+        this.wowPlayed = false;
         this.onWonClick = config.onWonClick ?? null;
         this.levelTimeElapsed = 0;
         this.cumulativeUnlockedPercent = 0;
@@ -434,26 +436,49 @@ export class GameEngine {
             this.ctx.drawImage(this.bgImage, x, y, imgW, imgH);
         }
         
-        // 2. 绘制迷雾（胜利时渐变消散）
+        // 2. 胜利动画：已解锁区域逐渐显现
         if (this.isWon) {
-            // v1.4.2: 迷雾渐变消散动画 - 覆盖整个屏幕
-            const fogAlpha = Math.max(0, 1 - this.winAnimProgress);
-            if (fogAlpha > 0) {
+            // v1.4.2: 播放 wow 语音
+            if (!this.wowPlayed) {
+                this.wowPlayed = true;
+                audioManager.playWowVoice();
+            }
+            
+            // 绘制已解锁区域（逐渐显现）
+            if (this.unlockedPolygons.length > 0) {
+                this.ctx.save();
+                this.ctx.globalAlpha = this.winAnimProgress; // 逐渐显现
+                this.ctx.fillStyle = '#000000';
+                this.ctx.globalCompositeOperation = 'source-over';
+                
+                // 绘制所有已解锁区域（用黑色遮罩）
+                for (const poly of this.unlockedPolygons) {
+                    if (poly.length > 0) {
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(poly[0].x, poly[0].y);
+                        for (let i = 1; i < poly.length; i++) {
+                            this.ctx.lineTo(poly[i].x, poly[i].y);
+                        }
+                        this.ctx.closePath();
+                        this.ctx.fill();
+                    }
+                }
+                this.ctx.restore();
+            }
+            
+            // 绘制剩余未解锁区域（逐渐消散）
+            if (this.activePolygon.length > 0) {
+                const fogAlpha = Math.max(0, 1 - this.winAnimProgress);
                 this.ctx.save();
                 this.ctx.globalAlpha = fogAlpha;
-                
-                // 使用径向渐变从中心消散
-                const centerX = width / 2;
-                const centerY = height / 2;
-                const maxRadius = Math.sqrt(width * width + height * height);
-                
-                const gradient = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, maxRadius);
-                gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-                gradient.addColorStop(Math.min(1, this.winAnimProgress + 0.1), 'rgba(0, 0, 0, 0.5)');
-                gradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
-                
-                this.ctx.fillStyle = gradient;
-                this.ctx.fillRect(0, 0, width, height);
+                this.ctx.fillStyle = '#000000';
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.activePolygon[0].x, this.activePolygon[0].y);
+                for (let i = 1; i < this.activePolygon.length; i++) {
+                    this.ctx.lineTo(this.activePolygon[i].x, this.activePolygon[i].y);
+                }
+                this.ctx.closePath();
+                this.ctx.fill();
                 this.ctx.restore();
             }
             
