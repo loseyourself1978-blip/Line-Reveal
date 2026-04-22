@@ -1,3 +1,23 @@
+### v1.5.1: 精灵图片资源
+
+**新增内容**:
+1. **精灵图片**:
+   - `spirit_butterfly.png` - 蝴蝶精灵
+   - `spirit_scorpion.png` - 蝎子精灵
+   - `spirit_spider.png` - 蜘蛛精灵
+   - 所有图片 1024x1024
+
+2. **代码更新**:
+   - `entities.ts`: 启用精灵图片加载
+
+**改动文件**:
+| 文件 | 改动 |
+|------|------|
+| `src/game/entities.ts` | 启用精灵图片加载 |
+| `public/assets/spirit_*.png` | 精灵图片资源 |
+
+---
+
 ### v1.5.0: 新关卡扩展 + 文档完善
 
 **新增内容**:
