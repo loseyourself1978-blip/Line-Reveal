@@ -110,12 +110,11 @@ export class AudioManager {
 
     public playWowVoice() {
         const getUrl = (s: string) => new URL(s, window.location.origin).href;
-        // User said "restore female wow voice", let's check for a common name
-        const wow = new Audio(getUrl('/assets/sfx_wow.mp3'));
-        wow.volume = 0.7;
+        // v1.4.2: 使用 sfx_victory.mp3 作为 wow 语音效果
+        const wow = new Audio(getUrl('/assets/sfx_victory.mp3'));
+        wow.volume = 0.8;
         wow.play().catch(() => {
-            // If wow.mp3 doesn't exist, we can't do much without the asset
-            console.warn('sfx_wow.mp3 not found');
+            console.warn('sfx_victory.mp3 play failed');
         });
     }
 
