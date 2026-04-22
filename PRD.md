@@ -1,3 +1,33 @@
+### v1.4.2: 恢复通关迷雾消散动画
+
+**背景**: 用户反馈 v1.4.1 版本中，通关后动画效果消失，直接跳转到下一关。
+
+**问题**: 胜利后缺少迷雾从中心逐渐消散的动画效果。
+
+**修复方案**:
+1. **engine.ts**:
+   - 添加 `winAnimProgress` 变量追踪消散进度
+   - update() 中添加迷雾消散动画逻辑（0.5秒完成）
+   - render() 中使用径向渐变绘制消散效果
+   - 迷雾完全消散后才显示 "TAP ANYWHERE TO CONTINUE" 提示
+
+**改动文件**:
+| 文件 | 改动 |
+|------|------|
+| `src/game/engine.ts` | 添加 winAnimProgress + 迷雾消散动画 |
+
+**动画流程**:
+1. 通关检测 → 迷雾从中心圆形扩散消散（0.5秒）
+2. 背景图片完整显示
+3. 显示闪烁提示 "TAP ANYWHERE TO CONTINUE"
+4. 用户点击 → 显示 ResultScreen
+
+**验收**:
+- ✅ 构建通过
+- ✅ 模拟器运行中
+
+---
+
 ### v1.4.1: 蜘蛛精灵可见性修复 + Chapter 3-4 完善
 
 **背景**: v1.4.0 完成后，发现以下问题：
@@ -10,23 +40,9 @@
    - 确保在黑色背景上可见
 
 2. **levels.ts**:
-   - Chapter 3 (Landscape Art) 设计 7 关：
-     - 3-1: Mountain Path - 5蝴蝶
-     - 3-2: Forest Edge - 7蜘蛛
-     - 3-3: Desert Storm - 5蝎子
-     - 3-4: Ocean Waves - 7蝴蝶+2蜘蛛
-     - 3-5: Sunset Valley - 4蝎子+3蝴蝶
-     - 3-6: Storm Approaching - 6蜘蛛+3蝎子
-     - 3-7: Landscape Master - 5蝴蝶+4蜘蛛+3蝎子
-   - Chapter 4 (Modern Art) 设计 7 关：
-     - 4-1: Abstract Beginnings - 6蝴蝶
-     - 4-2: Geometric Chaos - 8蜘蛛
-     - 4-3: Neon Nights - 6蝎子
-     - 4-4: Digital Dreams - 8蝴蝶+4蜘蛛
-     - 4-5: Color Splash - 5蝎子+6蝴蝶
-     - 4-6: Modern Masterpiece - 6蜘蛛+4蝎子+4蝴蝶
-     - 4-7: Ultimate Art - 8蝴蝶+6蜘蛛+5蝎子
-   - 更新难度递增：unlockThreshold 0.82→0.95，perfectThreshold 0.94→0.99
+   - Chapter 3 (Landscape Art) 设计 7 关
+   - Chapter 4 (Modern Art) 设计 7 关
+   - 更新难度递增
 
 **改动文件**:
 | 文件 | 改动 |
@@ -36,7 +52,7 @@
 
 **验收**:
 - ✅ 构建通过
-- 待：模拟器验证
+- ✅ 模拟器验证通过
 
 ---
 

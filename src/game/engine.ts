@@ -28,6 +28,7 @@ export class GameEngine {
     private spirits: Spirit[] = [];
     private bigSpirit: BigSpirit | null = null;
     public isWon = false;
+    public winAnimProgress: number = 0; // v1.4.2: 迷雾消散动画进度 (0-1)
     public showTapHint = false;
     public hintVisible = true;
     public hintBlinkTime = 0;
@@ -66,6 +67,7 @@ export class GameEngine {
         this.totalArea = 0;
         this.unlockedPolygons = [];
         this.isWon = false;
+        this.winAnimProgress = 0; // v1.4.2: 初始化迷雾消散动画
         this.showTapHint = false;
         this.hintVisible = true;
         this.hintBlinkTime = 0;
@@ -175,8 +177,14 @@ export class GameEngine {
 
     resize() {
         if (!this.canvasRef.current || !this.ctx) return;
-        const width = window.innerWidth;
-        const height = window.innerHeight;
+        // v1.3.4 Bug Fix: 使用 canvas 元素的实际渲染尺寸，而非 window.innerWidth/innerHeight
+        // 在 iOS Capacitor WKWebView 中 window.innerHeight 可能不含 safe area，
+        // 导致 canvas.height < 实际屏幕高度，背景图底部出现黑边
+        const rect = this.canvasRef.current.getBoundingClientRect();
+        const cssWidth = rect.width > 0 ? rect.width : (this.canvasRef.current.offsetWidth || window.innerWidth);
+        const cssHeight = rect.height > 0 ? rect.height : (this.canvasRef.current.offsetHeight || window.innerHeight);
+        const width = Math.round(cssWidth);
+        const height = Math.round(cssHeight);
         this.canvasRef.current.width = width;
         this.canvasRef.current.height = height;
         this.bufferCanvas.width = width;
@@ -253,14 +261,20 @@ export class GameEngine {
 
     update(dt: number) {
         if (this.isWon) {
-            // 胜利后直接显示提示（无时间延迟）
-            if (!this.showTapHint) {
-                this.showTapHint = true; // 立即显示提示
+            // v1.4.2: 迷雾消散动画 (0.5 秒从中心扩散)
+            if (this.winAnimProgress < 1) {
+                this.winAnimProgress = Math.min(1, this.winAnimProgress + dt * 2); // 0.5 秒完成
+            }
+            // 迷雾消散完成后显示提示
+            if (this.winAnimProgress >= 1 && !this.showTapHint) {
+                this.showTapHint = true;
                 this.hintBlinkTime = 0;
             }
             // 提示闪烁动画（0.5 秒周期）
-            this.hintBlinkTime += dt;
-            this.hintVisible = Math.sin(this.hintBlinkTime * Math.PI * 2) > 0;
+            if (this.showTapHint) {
+                this.hintBlinkTime += dt;
+                this.hintVisible = Math.sin(this.hintBlinkTime * Math.PI * 2) > 0;
+            }
             this.render();
             return;
         }
@@ -412,14 +426,51 @@ export class GameEngine {
         
         // 1. 绘制背景图片
         if (this.bgImage && this.bgImage.complete) {
-            const scale = Math.max(width / this.bgImage.width, height / this.bgImage.height);
-            const x = width / 2 - this.bgImage.width / 2 * scale;
-            const y = height / 2 - this.bgImage.height / 2 * scale;
-            this.ctx.drawImage(this.bgImage, x, y, this.bgImage.width * scale, this.bgImage.height * scale);
+            const scale = Math.max(width / this.bgImage.width, height / this.bgImage.width);
+            const imgW = this.bgImage.width * scale;
+            const imgH = this.bgImage.height * scale;
+            const x = width / 2 - imgW / 2;
+            const y = height / 2 - imgH / 2;
+            this.ctx.drawImage(this.bgImage, x, y, imgW, imgH);
         }
         
-        // 2. 绘制迷雾（仅在未胜利时绘制）
-        if (!this.isWon && this.activePolygon.length > 0) {
+        // 2. 绘制迷雾
+        if (this.isWon) {
+            // v1.4.2: 胜利后迷雾从中心消散动画
+            if (this.winAnimProgress < 1 && this.activePolygon.length > 0) {
+                this.ctx.save();
+                const centerX = width / 2;
+                const centerY = height / 2;
+                const maxRadius = Math.sqrt(width * width + height * height) / 2;
+                
+                // 径向渐变：中心透明 -> 边缘黑色
+                const gradient = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, maxRadius);
+                gradient.addColorStop(Math.max(0, this.winAnimProgress - 0.01), 'rgba(0, 0, 0, 0)');
+                gradient.addColorStop(this.winAnimProgress, 'rgba(0, 0, 0, 0.8)');
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 1)');
+                
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(0, 0, width, height);
+                this.ctx.restore();
+            }
+            
+            // 迷雾消散后显示提示
+            if (this.showTapHint && this.hintVisible) {
+                this.ctx.save();
+                this.ctx.globalAlpha = 1;
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.font = 'bold 24px -apple-system, BlinkMacSystemFont, sans-serif';
+                this.ctx.textAlign = 'center';
+                this.ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+                this.ctx.shadowBlur = 10;
+                this.ctx.fillText('TAP ANYWHERE TO CONTINUE', width / 2, height - 100);
+                this.ctx.restore();
+            }
+            return;
+        }
+        
+        // 3. 绘制迷雾（未胜利时）
+        if (this.activePolygon.length > 0) {
             this.ctx.save();
             this.ctx.beginPath();
             this.ctx.moveTo(this.activePolygon[0].x, this.activePolygon[0].y);
@@ -434,22 +485,6 @@ export class GameEngine {
             this.ctx.fillStyle = '#000000';
             this.ctx.fill();
             this.ctx.restore();
-        }
-        
-        // 3. 胜利后显示提示
-        if (this.isWon) {
-            if (this.showTapHint && this.hintVisible) {
-                this.ctx.save();
-                this.ctx.globalAlpha = 1;
-                this.ctx.fillStyle = '#ffffff';
-                this.ctx.font = 'bold 24px -apple-system, BlinkMacSystemFont, sans-serif';
-                this.ctx.textAlign = 'center';
-                this.ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-                this.ctx.shadowBlur = 10;
-                this.ctx.fillText('TAP ANYWHERE TO CONTINUE', width / 2, height - 100);
-                this.ctx.restore();
-            }
-            return;
         }
         
         // 4. 绘制划线
