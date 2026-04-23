@@ -1,18 +1,23 @@
-### v1.5.1: 精灵图片资源
+### v1.5.1: App Icon 更新 + 精灵图片
 
 **新增内容**:
-1. **精灵图片**:
+1. **App Icon**:
+   - 更新为新 icon.png
+   - 1024x1024 PNG
+
+2. **精灵图片**:
    - `spirit_butterfly.png` - 蝴蝶精灵
    - `spirit_scorpion.png` - 蝎子精灵
-   - `spirit_spider.png` - 蜘蛛精灵
+   - `spirit_spider.png` - 蜘蛛精灵 (占位符)
    - 所有图片 1024x1024
 
-2. **代码更新**:
+3. **代码更新**:
    - `entities.ts`: 启用精灵图片加载
 
 **改动文件**:
 | 文件 | 改动 |
 |------|------|
+| `ios/App/.../AppIcon-512@2x.png` | 更新 App Icon |
 | `src/game/entities.ts` | 启用精灵图片加载 |
 | `public/assets/spirit_*.png` | 精灵图片资源 |
 
