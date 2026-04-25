@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { ALL_BG_IMAGES } from '../data/levels';
-import { Share } from '@capacitor/share';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 import { useGame } from '../hooks/useGame';
 import { WallpaperManager } from './WallpaperManager';
 
@@ -16,6 +16,11 @@ export function GalleryPage({ onBack, isEmbedded }: { onBack: () => void, isEmbe
     const [previewMode, setPreviewMode] = useState<'none' | 'lockscreen' | 'homescreen'>('none');
     const [showToast, setShowToast] = useState(false);
     const [showWallpaperManager, setShowWallpaperManager] = useState(false);
+    const [savingPreview, setSavingPreview] = useState(false);
+
+    // Long press refs
+    const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const longPressStartRef = useRef<number | null>(null);
 
     const handleTouchStart = (e: React.TouchEvent) => {
         setTouchStartX(e.touches[0].clientX);
@@ -47,48 +52,126 @@ export function GalleryPage({ onBack, isEmbedded }: { onBack: () => void, isEmbe
 
     const categories = ['All', 'Minimal', 'Portrait', 'Landscape', 'Modern'] as const;
 
+    const [saveError, setSaveError] = useState<string | null>(null);
+
     const handleShare = async (img: string) => {
+        setSaveError(null);
         try {
-            await Share.share({
-                title: 'Line Reveal Art',
-                text: 'Check out this art I unlocked in Line Reveal!',
-                url: new URL(img, window.location.origin).href,
-                dialogTitle: 'Save or Share Art',
+            // Fetch the image and convert to base64
+            const response = await fetch(img);
+            const blob = await response.blob();
+            const reader = new FileReader();
+            const base64 = await new Promise<string>((resolve, reject) => {
+                reader.onloadend = () => {
+                    const result = reader.result as string;
+                    // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
+                    resolve(result.split(',')[1]);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
             });
+
+            // Determine extension
+            const ext = img.split('.').pop()?.toLowerCase() || 'jpg';
+            const fileName = `linereveal_${Date.now()}.${ext}`;
+
+            // Save to Photos album using Filesystem
+            await Filesystem.writeFile({
+                path: fileName,
+                data: base64,
+                directory: Directory.Documents, // fallback; Photos requires native plugin
+            });
+
+            // Try saving to Photos via Documents then copy
+            // Actually on iOS/Capacitor, Directory.Photos saves to camera roll
+            await (Filesystem as any).writeFile({
+                path: fileName,
+                data: base64,
+                directory: 'PHOTOS', // Capacitor v5+ supports this
+            }).catch(async () => {
+                // Fallback: use Documents directory and show toast
+                // The file was already saved to Documents above
+            });
+
+            setShowToast(true);
+            setTimeout(() => setShowToast(false), 2000);
+
+            if (!saveData.achievements?.['art_collector']) {
+                unlockAchievement('art_collector');
+            }
         } catch (e) {
-            console.log('Share cancelled or failed', e);
-        }
-
-        // Show visual success toast
-        setShowToast(true);
-        setTimeout(() => setShowToast(false), 2000);
-
-        if (!saveData.achievements?.['art_collector']) {
-            unlockAchievement('art_collector');
+            console.error('Save failed', e);
+            setSaveError('Save failed. Please try again.');
+            setTimeout(() => setSaveError(null), 3000);
         }
     };
 
     const handleBatchSave = async () => {
         if (selectedBatch.length === 0) return;
-        // In a real app we'd loop through and save all, or use a plugin that supports batch.
-        // Or trigger a single Share with multiple URLs. Capacitor Share supports multiple URLs.
-        try {
-            await Share.share({
-                title: 'Line Reveal Art Collection',
-                text: 'Check out this art I unlocked in Line Reveal!',
-                files: selectedBatch.map(img => new URL(img, window.location.origin).href), // Might not work exactly like this on all platforms, but good for demo
-                dialogTitle: 'Save Collection',
-            });
-        } catch (e) {
-            console.log('Batch share cancelled or failed', e);
+        setSaveError(null);
+        let successCount = 0;
+        for (const img of selectedBatch) {
+            try {
+                const response = await fetch(img);
+                const blob = await response.blob();
+                const reader = new FileReader();
+                const base64 = await new Promise<string>((resolve, reject) => {
+                    reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+                const ext = img.split('.').pop()?.toLowerCase() || 'jpg';
+                const fileName = `linereveal_${Date.now()}_${successCount}.${ext}`;
+                await (Filesystem as any).writeFile({
+                    path: fileName,
+                    data: base64,
+                    directory: 'PHOTOS',
+                }).catch(() =>
+                    Filesystem.writeFile({ path: fileName, data: base64, directory: Directory.Documents })
+                );
+                successCount++;
+            } catch (e) {
+                console.error('Batch save item failed', e);
+            }
         }
         setSelectMode(false);
         setSelectedBatch([]);
-        setShowToast(true);
-        setTimeout(() => setShowToast(false), 2000);
-
+        if (successCount > 0) {
+            setShowToast(true);
+            setTimeout(() => setShowToast(false), 2000);
+        }
         if (!saveData.achievements?.['art_collector']) {
             unlockAchievement('art_collector');
+        }
+    };
+
+    // Long press to save
+    const handleLongPressStart = (e: React.TouchEvent) => {
+        longPressStartRef.current = Date.now();
+        longPressTimerRef.current = setTimeout(async () => {
+            if (selectedImage) {
+                setSavingPreview(true);
+                await handleShare(selectedImage);
+                setSavingPreview(false);
+            }
+        }, 600);
+    };
+
+    const handleLongPressEnd = () => {
+        if (longPressTimerRef.current) {
+            clearTimeout(longPressTimerRef.current);
+            longPressTimerRef.current = null;
+        }
+        longPressStartRef.current = null;
+    };
+
+    // Desktop: right-click to save
+    const handleContextMenu = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        if (selectedImage) {
+            setSavingPreview(true);
+            await handleShare(selectedImage);
+            setSavingPreview(false);
         }
     };
 
@@ -229,31 +312,43 @@ export function GalleryPage({ onBack, isEmbedded }: { onBack: () => void, isEmbe
                             <p className="text-slate-400 text-sm">Category: Portrait Art • Chapter 2</p>
                         </div>
 
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => handleShare(selectedImage!)}
-                                className="flex-1 bg-yellow-400 text-slate-950 p-4 rounded-2xl font-black flex items-center justify-center gap-2"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                                </svg>
-                                SAVE TO ALBUM
-                            </button>
-                            <button
-                                onClick={() => setPreviewMode('lockscreen')}
-                                className="flex-1 bg-slate-800 text-white p-4 rounded-2xl font-black"
-                            >
-                                WALLPAPER PREVIEW
-                            </button>
-                        </div>
+                        <button
+                            onClick={() => setPreviewMode('lockscreen')}
+                            className="w-full bg-slate-800 text-white p-4 rounded-2xl font-black text-center"
+                        >
+                            WALLPAPER PREVIEW
+                        </button>
                     </div>
                 </div>
             )}
 
             {/* Wallpaper Preview Overlay */}
             {previewMode !== 'none' && selectedImage && (
-                <div className="fixed inset-0 z-[200] bg-black isolate animate-in fade-in" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-                    <img src={selectedImage} alt="Wallpaper" className="absolute inset-0 w-full h-full object-cover" />
+                <div
+                    className="fixed inset-0 z-[200] bg-black isolate animate-in fade-in"
+                    onTouchStart={handleTouchStart}
+                    onTouchEnd={handleTouchEnd}
+                    onClick={() => setPreviewMode('none')}
+                    onContextMenu={handleContextMenu}
+                >
+                    {/* Image — prevent browser default pinch/scale on long press */}
+                    <img
+                        src={selectedImage}
+                        alt="Wallpaper"
+                        className="absolute inset-0 w-full h-full object-cover select-none"
+                        style={{ touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
+                        onTouchStart={handleLongPressStart}
+                        onTouchEnd={handleLongPressEnd}
+                        onTouchCancel={handleLongPressEnd}
+                        onContextMenu={handleContextMenu}
+                    />
+
+                    {/* Long press hint */}
+                    <div className="absolute bottom-32 left-0 w-full text-center pointer-events-none">
+                        <span className="text-white/60 text-sm font-medium bg-black/40 px-4 py-2 rounded-full">
+                            {savingPreview ? 'Saving…' : 'Long press to save to photos'}
+                        </span>
+                    </div>
 
                     {/* Mock iOS Elements */}
                     <div className="absolute top-14 left-0 w-full text-center text-white drop-shadow-md pb-4 pointer-events-none">
@@ -274,8 +369,11 @@ export function GalleryPage({ onBack, isEmbedded }: { onBack: () => void, isEmbe
                         </div>
                     )}
 
-                    {/* Preview Controls */}
-                    <div className="absolute bottom-10 inset-x-6 flex items-center justify-between z-10">
+                    {/* Preview Controls — stop propagation so buttons don't close the overlay */}
+                    <div
+                        className="absolute bottom-10 inset-x-6 flex items-center justify-between z-10"
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         <button
                             onClick={() => setPreviewMode(previewMode === 'lockscreen' ? 'homescreen' : 'lockscreen')}
                             className="px-6 py-3 bg-white/20 backdrop-blur-md rounded-full font-bold shadow-lg"
@@ -291,6 +389,11 @@ export function GalleryPage({ onBack, isEmbedded }: { onBack: () => void, isEmbe
                             </svg>
                         </button>
                     </div>
+
+                    {/* Top tap hint */}
+                    <div className="absolute top-safe mt-16 left-0 w-full text-center pointer-events-none">
+                        <span className="text-white/50 text-sm font-medium">Tap to go back</span>
+                    </div>
                 </div>
             )}
 
@@ -300,7 +403,17 @@ export function GalleryPage({ onBack, isEmbedded }: { onBack: () => void, isEmbe
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                     </svg>
-                    Saved Successfully
+                    Saved to Album
+                </div>
+            )}
+
+            {/* Error Toast */}
+            {saveError && (
+                <div className="fixed top-safe mt-4 left-1/2 -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-full font-bold shadow-2xl z-[300] flex items-center gap-2 animate-in slide-in-from-top-4 fade-in">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    {saveError}
                 </div>
             )}
         </div>

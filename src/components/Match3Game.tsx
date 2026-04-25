@@ -8,13 +8,18 @@ interface Match3GameProps {
     onBack: () => void;
 }
 
+// PRD v1.1.2: 初始 10 秒，消一对 +5 秒，< 5s 进度条变红闪烁
+const INITIAL_TIME = 10;
+const TIME_PER_MATCH = 5;
+const WARNING_TIME = 5;
+
 export function Match3Game({ onBack }: Match3GameProps) {
     const { saveData, updateStats, endGame, currentLevelId } = useGame();
     const [engine, setEngine] = useState<Match3Engine | null>(null);
     const [board, setBoard] = useState<(any | null)[][]>([]);
     const [selected, setSelected] = useState<{ r: number, c: number } | null>(null);
     const [path, setPath] = useState<{ r: number, c: number }[] | null>(null);
-    const [stepsLeft, setStepsLeft] = useState(0);
+    const [timeLeft, setTimeLeft] = useState(INITIAL_TIME);
     const [revealedPercent, setRevealedPercent] = useState(0);
     const [eliminating, setEliminating] = useState<{ r: number, c: number }[]>([]);
     const [isFailed, setIsFailed] = useState(false);
@@ -23,6 +28,7 @@ export function Match3Game({ onBack }: Match3GameProps) {
     const touchStartX = useRef<number | null>(null);
     const isAnimating = useRef(false);
     const containerRef = useRef<HTMLDivElement>(null);
+    const isWonRef = useRef(false);
 
     const bgImage = useMemo(() => {
         return ALL_BG_IMAGES[currentLevelId % ALL_BG_IMAGES.length];
@@ -59,7 +65,6 @@ export function Match3Game({ onBack }: Match3GameProps) {
             const containerWidth = containerRef.current.clientWidth;
             const containerHeight = containerRef.current.clientHeight;
 
-            // Calculate max cell size that fits both dimensions
             const cellW = (containerWidth - 20) / engine.cols;
             const cellH = (containerHeight - 20) / engine.rows;
             const cellSize = Math.floor(Math.min(cellW, cellH));
@@ -76,8 +81,20 @@ export function Match3Game({ onBack }: Match3GameProps) {
         return () => window.removeEventListener('resize', updateSize);
     }, [engine]);
 
+    // PRD 倒计时：每秒 -1，归零失败
+    useEffect(() => {
+        if (isFailed || isWonRef.current) return;
+        if (timeLeft <= 0) {
+            setIsFailed(true);
+            return;
+        }
+        const timer = setTimeout(() => setTimeLeft(t => t - 1), 1000);
+        return () => clearTimeout(timer);
+    }, [timeLeft, isFailed]);
+
     // Initialize level
     useEffect(() => {
+        isWonRef.current = false;
         let stage = 1;
         if (currentLevelId === 1) stage = 1;
         else if (currentLevelId === 2) stage = 2;
@@ -90,7 +107,7 @@ export function Match3Game({ onBack }: Match3GameProps) {
         const newEngine = new Match3Engine(currentConfig);
         newEngine.generateBoard(currentConfig.itemTypesCount);
 
-        setStepsLeft(currentConfig.steps);
+        setTimeLeft(INITIAL_TIME);
         setSelected(null);
         setPath(null);
         setRevealedPercent(0);
@@ -103,7 +120,7 @@ export function Match3Game({ onBack }: Match3GameProps) {
     }, [currentLevelId]);
 
     const handleCellClick = (r: number, c: number) => {
-        if (!engine || !board[r] || !board[r][c] || isAnimating.current) return;
+        if (!engine || !board[r] || !board[r][c] || isAnimating.current || isFailed || isWonRef.current) return;
 
         if (!selected) {
             setSelected({ r, c });
@@ -118,14 +135,15 @@ export function Match3Game({ onBack }: Match3GameProps) {
             if (connectPath) {
                 isAnimating.current = true;
                 setPath(connectPath);
-                setStepsLeft(prev => prev - 1);
                 setEliminating([selected, { r, c }]);
 
                 audioManager.playMatchSuccessSFX();
                 audioManager.triggerHaptic();
 
+                // PRD: 每消除一对 +5 秒
+                setTimeLeft(prev => prev + TIME_PER_MATCH);
+
                 const sel = selected;
-                // Animation sequence
                 setTimeout(() => {
                     setPath(null);
                     setTimeout(() => {
@@ -151,26 +169,24 @@ export function Match3Game({ onBack }: Match3GameProps) {
                                 setBoard([...engine.board.map(row => [...row])]);
                                 setRevealedPercent(0);
                             } else {
+                                // PRD: 通关 +1 命，进入下一关
+                                isWonRef.current = true;
                                 updateStats({ match3Wins: (saveData.stats.match3Wins || 0) + 1 });
                                 setTimeout(() => endGame(true, 1, 0, true), 300);
                             }
                         } else {
-                            if (stepsLeft <= 1) {
-                                setIsFailed(true);
-                            } else {
-                                // Deadlock check
-                                let localEngine = engine;
-                                let attempts = 0;
-                                while (!localEngine.hasAvailableMoves() && attempts < 10) {
-                                    localEngine.shuffleBoard();
-                                    attempts++;
-                                }
-                                if (!localEngine.hasAvailableMoves()) setIsFailed(true);
-                                setBoard([...localEngine.board.map(row => [...row])]);
+                            // Deadlock check
+                            let localEngine = engine;
+                            let attempts = 0;
+                            while (!localEngine.hasAvailableMoves() && attempts < 10) {
+                                localEngine.shuffleBoard();
+                                attempts++;
                             }
+                            if (!localEngine.hasAvailableMoves()) setIsFailed(true);
+                            setBoard([...localEngine.board.map(row => [...row])]);
                         }
-                    }, 250); // Match-popup delay
-                }, 250); // Path delay
+                    }, 250);
+                }, 250);
             } else {
                 setSelected({ r, c });
                 audioManager.playMatchFailSFX();
@@ -190,6 +206,10 @@ export function Match3Game({ onBack }: Match3GameProps) {
 
     if (!engine) return null;
 
+    // 进度条颜色：< WARNING_TIME 变红闪烁
+    const isWarning = timeLeft < WARNING_TIME;
+    const timePercent = Math.min(100, (timeLeft / (INITIAL_TIME + TIME_PER_MATCH * 5)) * 100);
+
     return (
         <div 
             className="fixed inset-0 bg-black flex flex-col z-50 overflow-hidden select-none"
@@ -204,7 +224,7 @@ export function Match3Game({ onBack }: Match3GameProps) {
 
             {/* UI Layer */}
             <div className="relative z-10 flex flex-col h-full pt-safe-top pb-safe-bottom px-4 pt-12">
-                <header className="flex justify-between items-center mb-4">
+                <header className="flex justify-between items-center mb-3">
                     <button onClick={onBack} className="p-3 bg-white/10 rounded-full text-white backdrop-blur-md active:scale-95 transition-all">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
                     </button>
@@ -212,10 +232,19 @@ export function Match3Game({ onBack }: Match3GameProps) {
                         <div className="text-[10px] text-white/60 font-black uppercase tracking-widest">Level {currentLevelId} {engine.totalLayers > 1 ? `(Layer ${engine.currentLayerIndex + 1}/${engine.totalLayers})` : ''}</div>
                         <h2 className="text-xl font-black text-white italic tracking-tighter">CONNECT TWO</h2>
                     </div>
-                    <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 shrink-0">
-                        <span className="text-sm font-black text-white">{stepsLeft} Moves</span>
+                    {/* PRD: 倒计时显示 */}
+                    <div className={`px-4 py-2 rounded-2xl border shrink-0 backdrop-blur-md transition-colors ${isWarning ? 'bg-red-500/30 border-red-400/50' : 'bg-white/10 border-white/10'}`}>
+                        <span className={`text-sm font-black ${isWarning ? 'text-red-300 animate-pulse' : 'text-white'}`}>{timeLeft}s</span>
                     </div>
                 </header>
+
+                {/* PRD 倒计时进度条（橙色，<5s 变红闪烁）*/}
+                <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden mb-3">
+                    <div 
+                        className={`h-full rounded-full transition-all duration-1000 ${isWarning ? 'bg-red-500 animate-pulse' : 'bg-orange-400'}`}
+                        style={{ width: `${Math.max(0, (timeLeft / Math.max(timeLeft, INITIAL_TIME)) * 100)}%` }}
+                    />
+                </div>
 
                 {/* Precise Grid Area */}
                 <div ref={containerRef} className="flex-1 w-full relative overflow-hidden flex items-center justify-center">
@@ -244,7 +273,7 @@ export function Match3Game({ onBack }: Match3GameProps) {
                                                 : 'z-10 bg-white/15 border border-white/10'
                                         }`}
                                         style={{
-                                            width: gridDimensions.cellSize - 2, // Slight gap
+                                            width: gridDimensions.cellSize - 2,
                                             height: gridDimensions.cellSize - 2,
                                             left: (c - 1) * gridDimensions.cellSize,
                                             top: (r - 1) * gridDimensions.cellSize,
@@ -257,7 +286,6 @@ export function Match3Game({ onBack }: Match3GameProps) {
                                             className="w-[85%] h-[85%] object-contain pointer-events-none"
                                             alt=""
                                         />
-                                        {/* Selection Pulse */}
                                         {isSelected && <div className="absolute inset-0 border-2 border-white rounded-lg animate-pulse" />}
                                     </div>
                                 );
@@ -301,12 +329,14 @@ export function Match3Game({ onBack }: Match3GameProps) {
                     </div>
                 </footer>
 
-                {/* Deadlock Overlay */}
+                {/* Deadlock / Timeout Overlay */}
                 {isFailed && (
                     <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-lg px-8 animate-in fade-in">
                         <div className="bg-slate-900 border border-white/10 p-10 rounded-[48px] text-center w-full max-w-sm shadow-2xl">
                             <h2 className="text-4xl font-black text-white italic mb-2 tracking-tighter">GAME OVER</h2>
-                            <p className="text-white/50 text-sm mb-10 font-bold uppercase tracking-widest leading-relaxed">No moves left or out of attempts.</p>
+                            <p className="text-white/50 text-sm mb-10 font-bold uppercase tracking-widest leading-relaxed">
+                                {timeLeft <= 0 ? 'Time\'s up!' : 'No moves left.'}
+                            </p>
                             <button 
                                 onClick={() => window.location.reload()}
                                 className="w-full py-5 bg-yellow-400 text-black rounded-3xl font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all"

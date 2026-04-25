@@ -52,6 +52,27 @@ export function WelcomeScreen() {
                     {/* Render ChapterSelection directly inside Home for now, or just navigate to it. Let's just render the Chapters below it later */}
                 </div>
 
+                {/* Mode: Pinball Reveal (New in v1.5.0) */}
+                <div className="bg-slate-900/80 backdrop-blur-md rounded-3xl border border-orange-900/40 p-6 relative overflow-hidden">
+                    {/* NEW badge */}
+                    <div className="absolute top-3 right-3 bg-orange-500 text-white text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full">
+                        NEW
+                    </div>
+                    <h2 className="text-xl font-black text-orange-400 uppercase tracking-tight mb-2">Pinball Reveal</h2>
+                    <p className="text-sm text-slate-400 mb-4">Break blocks. Uncover beauty. Classic arcade meets art collection.</p>
+                    <button
+                        onClick={() => {
+                            audioManager.playBGM('');
+                            audioManager.triggerHaptic();
+                            setPlayMode('pinball');
+                            setShowChapters(true);
+                        }}
+                        className="w-full p-4 bg-orange-500 rounded-2xl text-white shadow-xl shadow-orange-500/20 active:scale-95 transition-transform text-center font-black uppercase tracking-tight"
+                    >
+                        Play Pinball Reveal
+                    </button>
+                </div>
+
                 {/* Mode: Jigsaw Puzzle */}
                 <div className="bg-slate-900/80 backdrop-blur-md rounded-3xl border border-slate-800 p-6">
                     <h2 className="text-xl font-black text-blue-400 uppercase tracking-tight mb-2">Jigsaw Mode</h2>

@@ -1,6 +1,17 @@
 @import "tailwindcss";
 
-html,
+html {
+  /* v1.3.4: 使用 100dvh 动态视口高度，确保在 iOS Capacitor 中撑满真实可见区域
+     避免 Home Indicator / safe area 导致底部黑边 */
+  height: 100dvh;
+  width: 100dvw;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+}
+
 body,
 #root {
   height: 100%;
@@ -9,6 +20,5 @@ body,
   padding: 0;
   overflow: hidden;
   touch-action: none;
-  /* Prevent browser scrolling/zooming */
   user-select: none;
 }

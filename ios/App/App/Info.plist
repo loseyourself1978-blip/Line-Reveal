@@ -49,6 +49,10 @@
 	<true/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Line Reveal needs access to save artwork to your photo library.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Line Reveal needs access to your photo library to save artwork.</string>
 </dict>
 </plist>
 

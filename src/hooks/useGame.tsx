@@ -15,7 +15,7 @@ interface GameState {
     unlockedPercent: number;
     gameTime: number;
     allLevelsPassed: boolean;
-    playMode: 'classic' | 'jigsaw' | 'match3';
+    playMode: 'classic' | 'pinball' | 'jigsaw' | 'match3';
     engineLives: number;
 
     saveData: SaveData;
@@ -35,7 +35,7 @@ interface GameState {
     setStatus: (status: GameStatus) => void;
     setActiveTab: (tab: AppTab) => void;
     setUnlockedPercent: (percent: number) => void;
-    setPlayMode: (mode: 'classic' | 'jigsaw' | 'match3') => void;
+    setPlayMode: (mode: 'classic' | 'pinball' | 'jigsaw' | 'match3') => void;
 }
 
 const GameContext = createContext<GameState | undefined>(undefined);
@@ -49,7 +49,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const [gameTime, setGameTime] = useState(0);
     const [playedBgImages, setPlayedBgImages] = useState<string[]>([]);
     const [allLevelsPassed, setAllLevelsPassed] = useState(false);
-    const [playMode, setPlayMode] = useState<'classic' | 'jigsaw' | 'match3'>('classic');
+    const [playMode, setPlayMode] = useState<'classic' | 'pinball' | 'jigsaw' | 'match3'>('classic');
     const [engineLives, setEngineLives] = useState<number>(5);
 
     const [currentLevel, setCurrentLevel] = useState<LevelConfig>({
@@ -150,6 +150,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     };
 
     // v1.4.0: 胜利后等待用户点击再显示 ResultScreen
+    // v1.4.x: jigsaw/match3 模式通关后直接显示 ResultScreen（无 canvas 动画等待）
     const endGame = (won: boolean, percent: number, timeElapsed: number, perfectLife: boolean = false) => {
         setUnlockedPercent(percent);
         audioManager.stopBGM();
@@ -157,9 +158,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
         if (won) {
             audioManager.playVictorySFX();
             audioManager.playWowVoice();
-
-            // v1.4.0: 不立即 setStatus，等待动画完成和用户点击
-            // 动画和用户点击由 GameCanvas 的 onWonClick 回调处理
 
             const targetTime = currentLevel.timeLimit;
             let stars = 1;
@@ -182,12 +180,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
             if (nextLevelExists) {
                 unlockLevel(nextLevelId);
-
-                const currentChapterId = currentLevel.chapterId;
-                const nextLevel = LEVELS.find(l => l.id === nextLevelId);
-                if (nextLevel && nextLevel.chapterId !== currentChapterId) {
-                    // 章节切换逻辑移到 onWonClick
-                }
             } else {
                 setAllLevelsPassed(true);
             }
@@ -197,8 +189,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
             if (percent >= 0.95 && !achievements['perfect_clear']) unlockAchievement('perfect_clear');
             if (timeElapsed < 30 && !achievements['speed_demon']) unlockAchievement('speed_demon');
             if (settings.spiritSpeed === 3 && perfectLife && !achievements['untouchable']) unlockAchievement('untouchable');
-
             if (saveData.unlockedLevels.length >= 14 && !achievements['completionist']) unlockAchievement('completionist');
+
+            // v1.5.0: pinball 模式也直接跳转结果页（独立球数系统，不依赖 canvas onWonClick）
+            if (playMode === 'jigsaw' || playMode === 'match3' || playMode === 'pinball') {
+                setStatus('won');
+            }
+            // classic: 动画和用户点击由 GameCanvas 的 onWonClick 回调处理
         } else {
             setStatus('lost');
         }
