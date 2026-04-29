@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ChapterSelection } from './ChapterSelection';
+import { PinballLevelSelect } from './PinballLevelSelect';
 import { GalleryPage } from './GalleryPage';
 import { SettingsPage } from './SettingsPage';
 import { ProfilePage } from './ProfilePage';
@@ -10,6 +11,7 @@ import { audioManager } from '../game/AudioManager';
 export function WelcomeScreen() {
     const { setPlayMode, activeTab, setActiveTab, setStatus } = useGame();
     const [showChapters, setShowChapters] = useState(false);
+    const [showPinballLevels, setShowPinballLevels] = useState(false);
 
     // Inside the Home tab, we might show the main hero and chapter selection
     const renderHome = () => (
@@ -65,7 +67,7 @@ export function WelcomeScreen() {
                             audioManager.playBGM('');
                             audioManager.triggerHaptic();
                             setPlayMode('pinball');
-                            setShowChapters(true);
+                            setShowPinballLevels(true);
                         }}
                         className="w-full p-4 bg-orange-500 rounded-2xl text-white shadow-xl shadow-orange-500/20 active:scale-95 transition-transform text-center font-black uppercase tracking-tight"
                     >
@@ -112,6 +114,9 @@ export function WelcomeScreen() {
     );
 
     const renderView = () => {
+        if (showPinballLevels) {
+            return <PinballLevelSelect onBack={() => setShowPinballLevels(false)} />;
+        }
         if (showChapters) {
             return <ChapterSelection onBack={() => setShowChapters(false)} isEmbedded />;
         }
@@ -126,9 +131,9 @@ export function WelcomeScreen() {
     };
 
     return (
-        <div className="w-full h-full absolute inset-0 bg-slate-950 z-50 flex flex-col overflow-hidden">
+        <div className="w-full h-full absolute inset-0 bg-slate-950 z-[50] flex flex-col overflow-hidden">
             {/* Main Content Area */}
-            <div className="flex-1 relative overflow-hidden">
+            <div className="flex-1 relative overflow-hidden z-[50]">
                 {renderView()}
             </div>
 

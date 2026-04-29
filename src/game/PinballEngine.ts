@@ -1,6 +1,10 @@
 /**
- * PinballEngine.ts — v1.5.0
+ * PinballEngine.ts — v1.5.1
  * Pinball Reveal 弹球物理引擎
+ *
+ * v1.5.1 Bugfix:
+ * - 砖块改为不透明（rgba 0.85-0.9）
+ * - 背景图片保持原始比例（letterbox）
  *
  * 决策记录（2026-04-25）：
  * - Q2: 多球同时存在时，等全部球落底才扣1球
@@ -164,17 +168,17 @@ export class PinballEngine {
         this.onSpiritReleased = config.onSpiritReleased;
 
         // 初始化挡板
-        this.basePaddleWidth = Math.floor(canvasW * 0.22);
+        this.basePaddleWidth = Math.floor(this.canvasW * 0.22);
         this.paddle = {
-            x: canvasW / 2,
+            x: this.canvasW / 2,
             width: this.basePaddleWidth,
             height: PADDLE_HEIGHT,
-            y: canvasH - 80,
+            y: this.canvasH - 80,
         };
 
         // 砖块区域占上方 65% 高度
-        this.brickAreaH = Math.floor(canvasH * 0.65);
-        this.brickW = Math.floor(canvasW / this.gridW);
+        this.brickAreaH = Math.floor(this.canvasH * 0.65);
+        this.brickW = Math.floor(this.canvasW / this.gridW);
         this.brickH = Math.floor(this.brickAreaH / this.gridH);
     }
 
@@ -188,6 +192,7 @@ export class PinballEngine {
         // 加载背景图，完成后生成砖块布局
         this.bgImage = new Image();
         this.bgImage.onload = () => {
+            console.log('[PinballEngine] ✅ bgImage loaded:', this.config.bgImageSrc);
             this.bgImageLoaded = true;
             this.offscreenCanvas = document.createElement('canvas');
             this.offscreenCanvas.width = this.bgImage!.width;
@@ -197,7 +202,13 @@ export class PinballEngine {
             const imageData = offCtx.getImageData(0, 0, this.bgImage!.width, this.bgImage!.height);
             this._generateBricks(imageData);
         };
-        this.bgImage.src = new URL(this.config.bgImageSrc, window.location.origin).href;
+        this.bgImage.onerror = (e) => {
+            console.error('[PinballEngine] ❌ bgImage failed to load:', this.config.bgImageSrc, e);
+            // 即使图片加载失败，也生成默认空白布局（避免黑屏）
+            this._generateBricksFromColor();
+        };
+        console.log('[PinballEngine] Loading bgImage:', this.config.bgImageSrc);
+        this.bgImage.src = this.config.bgImageSrc;
     }
 
     private _generateBricks(imageData: ImageData) {
@@ -215,9 +226,40 @@ export class PinballEngine {
         });
     }
 
+    /** 图片加载失败时：生成默认彩色砖块布局 */
+    private _generateBricksFromColor() {
+        console.log('[PinballEngine] Using fallback brick generation');
+        const { levelId } = this.config;
+        this.bricks = [];
+        for (let gy = 0; gy < this.gridH; gy++) {
+            for (let gx = 0; gx < this.gridW; gx++) {
+                // 跳过底部 2 行（留出发球区）
+                if (gy >= this.gridH - 2) continue;
+                // 随机生成少量空砖块
+                if (Math.random() < 0.05) continue;
+                const isSpiritGuard = levelId >= 6 && Math.random() < 0.08;
+                const isExplosive = Math.random() < 0.05;
+                const isTough = levelId >= 6 && Math.random() < 0.15;
+                const isShield = levelId >= 6 && Math.random() < 0.03;
+                const isBonus = Math.random() < 0.04;
+                this.bricks.push({
+                    id: `b_${gx}_${gy}`,
+                    gridX: gx,
+                    gridY: gy,
+                    type: isShield ? 'shield' : isExplosive ? 'explosive' : isBonus ? 'bonus' : isSpiritGuard ? 'spirit_guard' : isTough ? 'tough' : 'standard',
+                    hp: isTough ? 2 : 1,
+                    revealed: false,
+                    spiritReleased: false,
+                });
+            }
+        }
+        console.log('[PinballEngine] Fallback bricks generated:', this.bricks.length);
+    }
+
     /** 开始游戏循环 */
     start() {
         if (this.running) return;
+        console.log('[PinballEngine] start() called, bricks:', this.bricks.length, 'bgImageLoaded:', this.bgImageLoaded);
         this.running = true;
         this._launchBall();
         this.lastFrameTime = performance.now();
@@ -663,11 +705,39 @@ export class PinballEngine {
         // 清空
         ctx.clearRect(0, 0, W, H);
 
-        // 背景图（全画面模糊版）
+        // 背景图（全画面模糊版，保持原始比例，添加黑边）
         if (this.bgImageLoaded && this.bgImage) {
             ctx.save();
             ctx.filter = 'blur(4px) brightness(0.35)';
-            ctx.drawImage(this.bgImage, 0, 0, W, H);
+
+            // 计算 letterbox：保持原始宽高比
+            const imgW = this.bgImage.width;
+            const imgH = this.bgImage.height;
+            const canvasRatio = W / H;
+            const imgRatio = imgW / imgH;
+
+            let drawW: number, drawH: number, drawX: number, drawY: number;
+
+            if (imgRatio > canvasRatio) {
+                // 图片更宽，按宽度填充，两侧黑边
+                drawW = W;
+                drawH = W / imgRatio;
+                drawX = 0;
+                drawY = (H - drawH) / 2;
+            } else {
+                // 图片更高，按高度填充，上下黑边
+                drawH = H;
+                drawW = H * imgRatio;
+                drawX = (W - drawW) / 2;
+                drawY = 0;
+            }
+
+            // 先画黑边背景
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, W, H);
+
+            // 画图片（9参数版本：src sx,sy,sW,sH → dst dx,dy,dW,dH）
+            ctx.drawImage(this.bgImage, 0, 0, imgW, imgH, drawX, drawY, drawW, drawH);
             ctx.filter = 'none';
             ctx.restore();
         }
@@ -726,28 +796,27 @@ export class PinballEngine {
             const h = this.brickH - 1;
 
             ctx.save();
-            // 砖块底色
+            // 砖块底色（不透明，遮住背景）
             switch (brick.type) {
                 case 'standard':
-                    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+                    ctx.fillStyle = 'rgba(139,92,246,0.85)'; // 紫色半透明但不透背景
                     break;
                 case 'tough':
-                    ctx.fillStyle = `rgba(59,130,246,${0.25 + (3 - brick.hp) * 0.1})`;
+                    ctx.fillStyle = 'rgba(59,130,246,0.9)'; // 蓝色高亮
                     break;
                 case 'spirit_guard':
-                    ctx.fillStyle = 'rgba(251,146,60,0.35)';
-                    // 橙色发光
+                    ctx.fillStyle = 'rgba(251,146,60,0.9)'; // 橙色
                     ctx.shadowColor = '#FB923C';
                     ctx.shadowBlur = 8;
                     break;
                 case 'explosive':
-                    ctx.fillStyle = 'rgba(239,68,68,0.3)';
+                    ctx.fillStyle = 'rgba(239,68,68,0.9)'; // 红色
                     break;
                 case 'shield':
-                    ctx.fillStyle = 'rgba(148,163,184,0.4)';
+                    ctx.fillStyle = 'rgba(148,163,184,0.85)'; // 灰色
                     break;
                 case 'bonus':
-                    ctx.fillStyle = 'rgba(250,204,21,0.3)';
+                    ctx.fillStyle = 'rgba(250,204,21,0.9)'; // 金色
                     ctx.shadowColor = '#FACC15';
                     ctx.shadowBlur = 6;
                     break;
@@ -774,13 +843,13 @@ export class PinballEngine {
 
     private _brickBorderColor(type: BrickType): string {
         switch (type) {
-            case 'standard': return 'rgba(255,255,255,0.3)';
-            case 'tough': return '#3B82F6';
-            case 'spirit_guard': return '#FB923C';
-            case 'explosive': return '#EF4444';
-            case 'shield': return '#94A3B8';
-            case 'bonus': return '#FACC15';
-            default: return 'rgba(255,255,255,0.2)';
+            case 'standard': return 'rgba(167,139,250,0.6)';
+            case 'tough': return '#60A5FA';
+            case 'spirit_guard': return '#FDBA74';
+            case 'explosive': return '#FCA5A5';
+            case 'shield': return '#CBD5E1';
+            case 'bonus': return '#FDE047';
+            default: return 'rgba(255,255,255,0.3)';
         }
     }
 

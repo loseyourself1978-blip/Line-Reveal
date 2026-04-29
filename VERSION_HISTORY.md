@@ -4,7 +4,95 @@
 
 ---
 
-## v1.2.8 — 2026-04-16
+## v1.5.1 — 2026-04-29
+
+**版本号**: MARKETING_VERSION: 1.1.0 / BUILD: 14
+**Git commit**: (待提交)
+**基于**: v1.5.0
+
+**背景**
+修复 Pinball Reveal 模式的 3 个视觉和交互 bug。
+
+**Bugfix**
+1. **砖块不透明** (`src/game/PinballEngine.ts`)
+   - 所有砖块 fillStyle 从 0.18-0.35 透明度提升到 0.85-0.9
+   - 紫色 standard / 蓝色 tough / 橙色 spirit_guard / 红色 explosive / 灰色 shield / 金色 bonus
+   - 边框颜色同步加深，提升可视性
+
+2. **背景图片比例** (`src/game/PinballEngine.ts`)
+   - 从 `drawImage(5参数)` 改为 9 参数版本
+   - 实现 letterbox 黑边模式，保持原始宽高比
+   - 图片宽高比 > 画布：左右黑边
+   - 图片宽高比 < 画布：上下黑边
+
+3. **生命系统集成** (`src/components/PinballGame.tsx`)
+   - 接入全局 `engineLives` 系统（与其他模式一致）
+   - 右上角显示 `LivesDisplay` 组件
+   - 球耗尽时减少全局生命
+   - 生命耗尽时触发 `endGame(false)`
+   - 通关时增加生命（上限 5 命）
+
+**修改文件**
+- `src/game/PinballEngine.ts`: 砖块透明度 + 背景比例
+- `src/components/PinballGame.tsx`: 生命系统集成
+- `PROCESS.md`: 新增标准化工作流程文档
+
+**构建命令**
+```bash
+npx vite build && npx cap sync ios
+```
+
+---
+
+## v1.5.0 — 2026-04-25
+
+**版本号**: MARKETING_VERSION: 1.1.0 / BUILD: 13
+**Git commit**: ae6b896
+**基于**: v1.4.2 / PROD_SPEC_v1.5.0.md
+
+**背景**
+新增 Pinball Reveal（弹球解锁）模式，完整的街机弹球+艺术解锁体验。
+
+**决策记录（Q1-Q5）**
+- Q1: 精灵守护者在教学关（1-5关）**完全不出现**（spiritGuardRatio=0）
+- Q2: 多球全部落底才扣1球（减少挫败感）
+- Q3: Shield 砖块从**第6关**开始出现
+- Q4: **独立球数系统**，不消耗桃心命数
+- Q5: 砖块布局分辨率 **20×30**（细节更丰富）
+
+**新增文件**
+- `src/game/PinballEngine.ts` — 弹球物理引擎（Ball/Paddle/Brick/Spirit）
+- `src/game/BrickLayout.ts` — Sobel 轮廓砖块布局生成器（20×30）
+- `src/components/PinballGame.tsx` — Pinball Reveal React 主组件
+- `src/data/pinball-levels.ts` — 30关 + 挑战关动态配置
+- `tests/auto-test-v1.5.0.html` — 52个自动化测试用例
+- `patches/0001-feat-v1.5.0-Pinball-Reveal-mode.patch` — 完整 diff
+
+**修改文件**
+- `src/hooks/useGame.tsx`: PlayMode 类型添加 `'pinball'`，endGame 添加 pinball 分支
+- `src/App.tsx`: **Bugfix** — 新增 `import { PinballGame }` 和 `playMode === 'pinball'` 渲染分支（此前缺失导致 pinball 模式 fallback 到 Classic）
+- `src/components/WelcomeScreen.tsx`: 新增 Pinball Reveal 模式卡片（橙色+NEW标识）
+- `src/game/AudioManager.ts`: 新增 `playPinballSFX()` + `playPinballBGM()`
+- `docs/PROD_SPEC_v1.5.0.md`: 状态改为"开发中"，决策 Q1-Q5 已写入文档
+- `docs/APPLE_STORE_COMPLIANCE.md`: 年龄评级从 17+ 更新为 9+
+- `docs/APP_STORE_PREP.md`: 版本更新为 v1.5.0，应用描述增加 Pinball 模式说明
+
+**构建**
+- `npx vite build` ✅ 303.62 KB
+- `npx cap sync ios` ✅
+- `xcodebuild DEBUG` ✅ BUILD SUCCEEDED
+- `git push origin main` ✅ ae6b896
+
+**回滚方法**
+```bash
+git revert ae6b896
+# 或还原至 v1.4.2 tag
+git checkout v1.4.2
+```
+
+---
+
+
 
 **版本号**: MARKETING_VERSION: 1.0.1 / BUILD: 12 → 13
 

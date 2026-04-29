@@ -18,6 +18,9 @@ interface GameState {
     playMode: 'classic' | 'pinball' | 'jigsaw' | 'match3';
     engineLives: number;
 
+    // v1.5.0: Pinball 模式独立关卡状态
+    currentPinballLevelId: number;
+
     saveData: SaveData;
     unlockGalleryItem: (id: string) => void;
     spendFragments: (amount: number) => boolean;
@@ -29,6 +32,7 @@ interface GameState {
     setEngineLives: (lives: number) => void;
 
     startGame: (levelId: number) => void;
+    startPinballGame: (levelId: number) => void;
     endGame: (won: boolean, percent: number, timeElapsed: number, perfectLife?: boolean) => void;
     resetGame: () => void;
     restartGame: () => void;
@@ -51,6 +55,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const [allLevelsPassed, setAllLevelsPassed] = useState(false);
     const [playMode, setPlayMode] = useState<'classic' | 'pinball' | 'jigsaw' | 'match3'>('classic');
     const [engineLives, setEngineLives] = useState<number>(5);
+    const [currentPinballLevelId, setCurrentPinballLevelId] = useState(1);
 
     const [currentLevel, setCurrentLevel] = useState<LevelConfig>({
         ...LEVELS[0],
@@ -149,6 +154,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
         });
     };
 
+    // v1.5.0: Pinball 模式启动函数（独立于 Classic 关卡体系）
+    const startPinballGame = (levelId: number) => {
+        setCurrentPinballLevelId(levelId);
+        setStatus('playing');
+        setUnlockedPercent(0);
+        setGameTime(0);
+        // Pinball 不消耗桃心，engineLives 保持默认值
+        audioManager.playPinballBGM?.() || audioManager.playClassicBGM();
+    };
+
     // v1.4.0: 胜利后等待用户点击再显示 ResultScreen
     // v1.4.x: jigsaw/match3 模式通关后直接显示 ResultScreen（无 canvas 动画等待）
     const endGame = (won: boolean, percent: number, timeElapsed: number, perfectLife: boolean = false) => {
@@ -227,6 +242,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
             allLevelsPassed,
             playMode,
             engineLives,
+            currentPinballLevelId,
             saveData,
             unlockGalleryItem,
             spendFragments,
@@ -237,6 +253,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
             toggleFavorite,
             setEngineLives,
             startGame,
+            startPinballGame,
             endGame,
             resetGame,
             restartGame,

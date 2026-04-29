@@ -1,22 +1,28 @@
 /**
- * PinballGame.tsx — v1.5.0
+ * PinballGame.tsx — v1.5.1
  * Pinball Reveal 游戏主组件
  *
- * 独立球数系统（Q4），不消耗桃心命数
- * 模式结束后调用 endGame() 统一处理胜负
+ * v1.5.1 Bugfix:
+ * - 接入全局生命系统（engineLives），与 Classic 模式一致
+ * - 右上角显示 LivesDisplay
+ * - 球耗尽时减少生命，生命耗尽时显示失败
+ * - 通关时增加生命
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { PinballEngine, type FloatingSpirit } from '../game/PinballEngine';
 import { getPinballLevelConfig } from '../data/pinball-levels';
 import { useGame } from '../hooks/useGame';
+import { BG_IMAGE_POOL } from '../data/levels';
+import { LivesDisplay } from './LivesDisplay';
 
 interface PinballGameProps {
     onBack: () => void;
 }
 
 export function PinballGame({ onBack }: PinballGameProps) {
-    const { currentLevel, currentLevelId, endGame } = useGame();
+    // v1.5.1: 使用全局生命系统（与其他模式一致）
+    const { currentPinballLevelId, endGame, engineLives, setEngineLives } = useGame();
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const engineRef = useRef<PinballEngine | null>(null);
@@ -36,54 +42,57 @@ export function PinballGame({ onBack }: PinballGameProps) {
     const gameEndedRef = useRef(false);
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const hapticsShown = useRef(false);
+    // 始终持有最新的 startEngine / startTimer，避免 stale closure
+    const startEngineRef = useRef<() => void>(() => {});
+    const startTimerRef = useRef<() => void>(() => {});
 
     // ─── 获取关卡配置 ───────────────────────────────────────
 
-    const levelCfg = getPinballLevelConfig(currentLevelId);
+    const levelCfg = getPinballLevelConfig(currentPinballLevelId);
 
-    // ─── Canvas 尺寸 ────────────────────────────────────────
+    // ─── Canvas 尺寸：直接使用 window 尺寸，避免 h-full 测量问题 ──
 
     useEffect(() => {
         const updateSize = () => {
-            if (containerRef.current) {
-                const rect = containerRef.current.getBoundingClientRect();
-                setCanvasSize({ w: Math.floor(rect.width), h: Math.floor(rect.height) });
-            }
+            setCanvasSize({ w: Math.floor(window.innerWidth), h: Math.floor(window.innerHeight) });
         };
         updateSize();
         window.addEventListener('resize', updateSize);
         return () => window.removeEventListener('resize', updateSize);
     }, []);
 
-    // ─── 倒计时启动 ─────────────────────────────────────────
+    // ─── 倒计时 HUD timer（先于 startEngine 定义，供其 ref 调用）──
 
-    useEffect(() => {
-        let c = 3;
-        setCountdown(c);
-        setShowCountdown(true);
-        const t = setInterval(() => {
-            c--;
-            if (c <= 0) {
-                clearInterval(t);
-                setShowCountdown(false);
-                startEngine();
-            } else {
-                setCountdown(c);
+    const startTimer = useCallback(() => {
+        if (timerRef.current) clearInterval(timerRef.current);
+        let remaining = levelCfg.timeLimit;
+        timerRef.current = setInterval(() => {
+            remaining -= 1;
+            setTimeLeft(remaining);
+            if (remaining <= 0) {
+                clearInterval(timerRef.current!);
             }
         }, 1000);
-        return () => clearInterval(t);
-    }, []);  // 仅挂载时执行一次
+    }, [levelCfg.timeLimit]);
+
+    // 保持 startTimerRef 指向最新版本
+    useEffect(() => {
+        startTimerRef.current = startTimer;
+    }, [startTimer]);
 
     // ─── 引擎初始化 ─────────────────────────────────────────
 
     const startEngine = useCallback(() => {
         if (!canvasRef.current) return;
 
+        // v1.5.0: Pinball 关卡使用 BG_IMAGE_POOL 对应图片（与 Classic 关卡1-30对应）
+        const bgSrc = BG_IMAGE_POOL[(currentPinballLevelId - 1) % BG_IMAGE_POOL.length];
+
         const engine = new PinballEngine({
             canvasW: canvasSize.w,
             canvasH: canvasSize.h,
-            levelId: currentLevelId,
-            bgImageSrc: currentLevel.bgImage,
+            levelId: currentPinballLevelId,
+            bgImageSrc: bgSrc,
             initialBalls: levelCfg.initialBalls,
             timeLimit: levelCfg.timeLimit,
             unlockThreshold: levelCfg.unlockThreshold,
@@ -93,10 +102,17 @@ export function PinballGame({ onBack }: PinballGameProps) {
 
             onBallLost: () => {
                 if (gameEndedRef.current) return;
-                setBallsLeft(prev => {
-                    const next = prev - 1;
-                    return next;
-                });
+                // v1.5.1: 球丢失时减少全局生命
+                const newLives = engineLives - 1;
+                setEngineLives(newLives);
+                setBallsLeft(prev => prev - 1);
+
+                if (newLives <= 0) {
+                    // 生命耗尽 → 游戏失败
+                    gameEndedRef.current = true;
+                    setGameOver('lost');
+                    endGame(false, 0, 0);
+                }
             },
 
             onRevealUpdate: (pct) => {
@@ -107,6 +123,8 @@ export function PinballGame({ onBack }: PinballGameProps) {
                 if (gameEndedRef.current) return;
                 gameEndedRef.current = true;
                 setGameOver('won');
+                // v1.5.1: 通关时增加生命（最多5命上限）
+                setEngineLives(prev => Math.min(prev + 1, 5));
                 endGame(true, percent, time);
             },
 
@@ -127,11 +145,12 @@ export function PinballGame({ onBack }: PinballGameProps) {
         setBallsLeft(levelCfg.initialBalls);
         setTimeLeft(levelCfg.timeLimit);
 
-        // 等背景图加载完成（最多等 2s）后启动
+        // 等背景图加载完成（最多等 2s）后启动；通过 ref 调用最新 startTimer
         const tryStart = () => {
             if (engine.allBricks.length > 0 || Date.now() - startTs > 2000) {
+                console.log('[PinballGame] tryStart: bricks=', engine.allBricks.length, 'elapsed=', Date.now() - startTs, 'ms');
                 engine.start();
-                startTimer();
+                startTimerRef.current();
             } else {
                 setTimeout(tryStart, 100);
             }
@@ -139,21 +158,32 @@ export function PinballGame({ onBack }: PinballGameProps) {
         const startTs = Date.now();
         setTimeout(tryStart, 200);
 
-    }, [canvasSize, currentLevelId, currentLevel, levelCfg]);
+    }, [canvasSize, currentPinballLevelId, levelCfg, engineLives, setEngineLives]);
 
-    // ─── 倒计时 HUD ──────────────────────────────────────────
+    // ─── 保持 startEngineRef 指向最新的 startEngine ─────────
 
-    const startTimer = useCallback(() => {
-        if (timerRef.current) clearInterval(timerRef.current);
-        let remaining = levelCfg.timeLimit;
-        timerRef.current = setInterval(() => {
-            remaining -= 1;
-            setTimeLeft(remaining);
-            if (remaining <= 0) {
-                clearInterval(timerRef.current!);
+    useEffect(() => {
+        startEngineRef.current = startEngine;
+    }, [startEngine]);
+
+    // ─── 倒计时启动 ─────────────────────────────────────────
+
+    useEffect(() => {
+        let c = 3;
+        setCountdown(c);
+        setShowCountdown(true);
+        const t = setInterval(() => {
+            c--;
+            if (c <= 0) {
+                clearInterval(t);
+                setShowCountdown(false);
+                startEngineRef.current();  // 始终调用最新版本，消除 stale closure
+            } else {
+                setCountdown(c);
             }
         }, 1000);
-    }, [levelCfg.timeLimit]);
+        return () => clearInterval(t);
+    }, []);  // 仅挂载时执行一次
 
     useEffect(() => {
         return () => {
@@ -225,19 +255,9 @@ export function PinballGame({ onBack }: PinballGameProps) {
             {!gameOver && !showCountdown && (
                 <div className="absolute top-0 left-0 right-0 z-20 pt-safe px-4 pt-3 pb-2 bg-gradient-to-b from-slate-950/90 to-transparent pointer-events-none">
                     <div className="flex items-center justify-between">
-                        {/* 球数 */}
-                        <div className="flex items-center gap-1.5">
-                            {Array.from({ length: levelCfg.initialBalls }).map((_, i) => (
-                                <div
-                                    key={i}
-                                    className={`w-3.5 h-3.5 rounded-full transition-all ${
-                                        i < ballsLeft
-                                            ? 'bg-yellow-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]'
-                                            : 'bg-slate-700'
-                                    }`}
-                                />
-                            ))}
-                            <span className="text-slate-400 text-xs ml-1">BALLS</span>
+                        {/* 生命（右上角，与其他模式一致） */}
+                        <div className="flex items-center">
+                            <LivesDisplay />
                         </div>
 
                         {/* 时间 */}
@@ -328,7 +348,7 @@ export function PinballGame({ onBack }: PinballGameProps) {
                 <div className="absolute bottom-safe-4 left-0 right-0 z-20 flex justify-center pointer-events-none" style={{ bottom: '1rem' }}>
                     <div className="bg-slate-900/60 backdrop-blur-sm rounded-full px-4 py-1.5 border border-slate-700/50">
                         <span className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">
-                            PINBALL REVEAL · Lv {currentLevelId}
+                            PINBALL REVEAL · Lv {currentPinballLevelId}
                         </span>
                     </div>
                 </div>

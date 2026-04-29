@@ -10,10 +10,11 @@ This document outlines the design decisions and compliance measures for **Line R
 - **Target Market**: United States
 - **Localization**: All UI elements, system dialogs, and game text have been fully localized to English to ensure a native experience for American users.
 
-## 2. Content Rating (17+ Mature)
-- **Adult Content Notice**: The application contains suggestive/artistic mature imagery integrated into its core "reveal" puzzle mechanics.
-- **Compliance**: The app must be submitted with a **17+ Age Rating** (Infrequent/Mild Sexual Content and Nudity) in App Store Connect.
-- **Safety**: No illicit or illegal explicit content is included; images are curated for an adult artistic puzzle experience.
+## 2. Content Rating (9+)
+
+- **Content Rating Notice**: The application has been rated **9+** (Infrequent/Mild Cartoon or Fantasy Violence) in App Store Connect.
+- **Compliance**: Age rating updated in v1.5.0 to align with the new Pinball Reveal mode, which includes mild arcade-style brick-breaking gameplay. The artistic imagery remains curated and appropriate for general audiences.
+- **Safety**: No explicit violence, sexual content, or mature themes. Brick-breaking is cartoon-style with no graphic depictions.
 
 ## 3. Originality & Anti-Spam (4.3 Repetitive Content)
 - **Innovative Mechanics**: Unlike generic "reveal" games, *Line Reveal* utilizes a **custom Sobel Edge Detection algorithm** to generate real-time silhouettes from images. This is a unique technical implementation.
@@ -29,4 +30,4 @@ This document outlines the design decisions and compliance measures for **Line R
 - This app is developed independently. It is not a clone or a "white-label" version of another product. All logic for area-splitting, spirit behavior, and rendering is proprietary to the *Line Reveal* project.
 
 ---
-**Developer Note**: Please use the "Mature/17+" category when configuring the Store Listing in App Store Connect.
+**Developer Note**: Please use the **"Ages 9+"** category when configuring the Store Listing in App Store Connect. v1.5.0+ requires 9+ rating to accommodate the arcade-style Pinball Reveal mode.
